@@ -17,17 +17,22 @@ import {
   computeEma,
   computeLatestRsi,
   computeSessionVwap,
-  fetchHyperliquidCandles,
   type HlCandle,
   type HlInterval,
 } from '../lib/hyperliquidFeed';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
+import {
+  fetchUniversalCandles,
+  type FeedSource,
+  type MarketQuote,
+} from '../lib/universalFeed';
 
 interface RealtimeCandleChartProps {
   meta: TickerMeta;
   prevDayPx: number | null;
   expanded: boolean;
   themeId: ThemeId;
+  onQuoteDiscovered?: (quote: MarketQuote) => void;
   onFallbackToTradingView: () => void;
 }
 
@@ -59,6 +64,7 @@ function RealtimeCandleChartComponent({
   prevDayPx,
   expanded,
   themeId,
+  onQuoteDiscovered,
   onFallbackToTradingView,
 }: RealtimeCandleChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -66,6 +72,7 @@ function RealtimeCandleChartComponent({
   const [interval, setInterval] = useState<HlInterval>('5m');
   const [showVwap, setShowVwap] = useState(true);
   const [showEma, setShowEma] = useState(true);
+  const [feedSource, setFeedSource] = useState<FeedSource>('none');
   const [wsLive, setWsLive] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -81,10 +88,20 @@ function RealtimeCandleChartComponent({
   const showEmaRef = useRef(showEma);
   const paletteRef = useRef(THEME_MAP[themeId]);
   const prevDayPxRef = useRef(prevDayPx);
+  const onQuoteRef = useRef(onQuoteDiscovered);
+  const onFallbackRef = useRef(onFallbackToTradingView);
 
   useEffect(() => {
     prevDayPxRef.current = prevDayPx;
   }, [prevDayPx]);
+
+  useEffect(() => {
+    onQuoteRef.current = onQuoteDiscovered;
+  }, [onQuoteDiscovered]);
+
+  useEffect(() => {
+    onFallbackRef.current = onFallbackToTradingView;
+  }, [onFallbackToTradingView]);
 
   useEffect(() => {
     showVwapRef.current = showVwap;
@@ -97,7 +114,7 @@ function RealtimeCandleChartComponent({
     ema21SeriesRef.current?.applyOptions({ visible: showEma });
   }, [showEma]);
 
-  // Live theme swap without dropping WebSocket stream
+  // Live theme swap without dropping stream
   useEffect(() => {
     const p = THEME_MAP[themeId];
     paletteRef.current = p;
@@ -147,6 +164,8 @@ function RealtimeCandleChartComponent({
     const p = paletteRef.current;
     setLoading(true);
     setLoadError(null);
+    setWsLive(false);
+    setFeedSource('none');
     candlesRef.current = [];
 
     const chart: IChartApi = createChart(el, {
@@ -230,7 +249,7 @@ function RealtimeCandleChartComponent({
     });
     ema21SeriesRef.current = ema21Series;
 
-    // Reference price lines (custom S-1/IPO lines for ANT, or prev day close for other stocks)
+    // Reference price lines (IPO / S-1 lines or prev day close)
     if (meta.referenceLines && meta.referenceLines.length > 0) {
       for (const line of meta.referenceLines) {
         candleSeries.createPriceLine({
@@ -334,85 +353,125 @@ function RealtimeCandleChartComponent({
 
     const controller = new AbortController();
     let stream: HyperliquidStream | null = null;
+    let pollTimer: number | null = null;
 
-    void fetchHyperliquidCandles(meta.hlCoin, interval, 220, controller.signal)
-      .then((initial) => {
+    void fetchUniversalCandles(meta.ticker, meta.hlCoin, interval, 220, controller.signal)
+      .then((res) => {
         if (controller.signal.aborted) return;
-        if (initial.length === 0) {
-          setLoadError(`No live candles returned for ${meta.hlCoin}.`);
+        if (res.quote) {
+          onQuoteRef.current?.(res.quote);
+        }
+
+        if (res.candles.length === 0) {
           setLoading(false);
+          if (meta.ipoStatus === 'upcoming') {
+            setLoadError(
+              `${meta.name} (${meta.ticker}) is an upcoming IPO (${meta.ipoDate ?? 'Pipeline'}). Live candles start on Day 1 first print.`,
+            );
+          } else {
+            // Seamlessly switch to TradingView chart so the user never sees a dead error state
+            setLoadError(`Switching ${meta.ticker} to TradingView interactive chart…`);
+            onFallbackRef.current();
+          }
           return;
         }
-        candlesRef.current = initial;
-        syncAllSeries(initial, true);
+
+        candlesRef.current = res.candles;
+        setFeedSource(res.source);
+        syncAllSeries(res.candles, true);
         setLoading(false);
 
-        stream = new HyperliquidStream(
-          meta.hlCoin,
-          {
-            onStatus: setWsLive,
-            onCandle: (incoming) => {
-              const list = candlesRef.current;
-              if (list.length === 0) return;
-              const last = list[list.length - 1];
-              let next: HlCandle[];
-              if (incoming.time === last.time) {
-                next = [...list.slice(0, -1), incoming];
-              } else if (incoming.time > last.time) {
-                next = [...list, incoming].slice(-300);
-              } else {
-                return;
-              }
-              candlesRef.current = next;
+        if (res.source === 'hyperliquid' && meta.hlCoin) {
+          stream = new HyperliquidStream(
+            meta.hlCoin,
+            {
+              onStatus: setWsLive,
+              onCandle: (incoming) => {
+                const list = candlesRef.current;
+                if (list.length === 0) return;
+                const last = list[list.length - 1];
+                let next: HlCandle[];
+                if (incoming.time === last.time) {
+                  next = [...list.slice(0, -1), incoming];
+                } else if (incoming.time > last.time) {
+                  next = [...list, incoming].slice(-300);
+                } else {
+                  return;
+                }
+                candlesRef.current = next;
 
-              const activeP = paletteRef.current;
-              candleSeries.update({
-                time: incoming.time as UTCTimestamp,
-                open: incoming.open,
-                high: incoming.high,
-                low: incoming.low,
-                close: incoming.close,
-              });
-              volumeSeries.update({
-                time: incoming.time as UTCTimestamp,
-                value: incoming.volume,
-                color: incoming.close >= incoming.open ? activeP.volUp : activeP.volDown,
-              });
-              const vwapArr = computeSessionVwap(next);
-              const ema9Arr = computeEma(next, 9);
-              const ema21Arr = computeEma(next, 21);
-              const lastVwap = vwapArr[vwapArr.length - 1];
-              const lastEma9 = ema9Arr[ema9Arr.length - 1];
-              const lastEma21 = ema21Arr[ema21Arr.length - 1];
-              if (lastVwap) {
-                vwapSeries.update({
-                  time: lastVwap.time as UTCTimestamp,
-                  value: lastVwap.value,
+                const activeP = paletteRef.current;
+                candleSeries.update({
+                  time: incoming.time as UTCTimestamp,
+                  open: incoming.open,
+                  high: incoming.high,
+                  low: incoming.low,
+                  close: incoming.close,
                 });
-              }
-              if (lastEma9) {
-                ema9Series.update({
-                  time: lastEma9.time as UTCTimestamp,
-                  value: lastEma9.value,
+                volumeSeries.update({
+                  time: incoming.time as UTCTimestamp,
+                  value: incoming.volume,
+                  color:
+                    incoming.close >= incoming.open ? activeP.volUp : activeP.volDown,
                 });
-              }
-              if (lastEma21) {
-                ema21Series.update({
-                  time: lastEma21.time as UTCTimestamp,
-                  value: lastEma21.value,
-                });
-              }
-              updateReadoutFromCandles(next);
+                const vwapArr = computeSessionVwap(next);
+                const ema9Arr = computeEma(next, 9);
+                const ema21Arr = computeEma(next, 21);
+                const lastVwap = vwapArr[vwapArr.length - 1];
+                const lastEma9 = ema9Arr[ema9Arr.length - 1];
+                const lastEma21 = ema21Arr[ema21Arr.length - 1];
+                if (lastVwap) {
+                  vwapSeries.update({
+                    time: lastVwap.time as UTCTimestamp,
+                    value: lastVwap.value,
+                  });
+                }
+                if (lastEma9) {
+                  ema9Series.update({
+                    time: lastEma9.time as UTCTimestamp,
+                    value: lastEma9.value,
+                  });
+                }
+                if (lastEma21) {
+                  ema21Series.update({
+                    time: lastEma21.time as UTCTimestamp,
+                    value: lastEma21.value,
+                  });
+                }
+                updateReadoutFromCandles(next);
+              },
             },
-          },
-          interval,
-        );
-        stream.connect();
+            interval,
+          );
+          stream.connect();
+        } else {
+          // Universal Exchange Equity / IPO live 15s refresh
+          setWsLive(true);
+          pollTimer = window.setInterval(() => {
+            void fetchUniversalCandles(
+              meta.ticker,
+              null,
+              interval,
+              220,
+              controller.signal,
+            ).then((fresh) => {
+              if (controller.signal.aborted) return;
+              if (fresh.quote) onQuoteRef.current?.(fresh.quote);
+              if (fresh.candles.length > 0) {
+                candlesRef.current = fresh.candles;
+                syncAllSeries(fresh.candles, false);
+              }
+            });
+          }, 15_000);
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) {
-          setLoadError('Live Hyperliquid feed unavailable on this network.');
           setLoading(false);
+          setLoadError(`Live candle feed temporarily unavailable for ${meta.ticker}.`);
+          if (meta.ipoStatus !== 'upcoming') {
+            onFallbackRef.current();
+          }
         }
       });
 
@@ -429,6 +488,7 @@ function RealtimeCandleChartComponent({
     return () => {
       controller.abort();
       stream?.destroy();
+      if (pollTimer !== null) window.clearInterval(pollTimer);
       resizeObs.disconnect();
       chartRef.current = null;
       candleSeriesRef.current = null;
@@ -477,7 +537,11 @@ function RealtimeCandleChartComponent({
           </button>
 
           <span className={`rt-ws-pill mono${wsLive ? ' rt-ws-pill--live' : ''}`}>
-            {wsLive ? '● STREAMING' : '○ SYNCING'}
+            {wsLive
+              ? feedSource === 'hyperliquid'
+                ? '● 0-DELAY WS'
+                : '● LIVE EXCHANGE'
+              : '○ SYNCING'}
           </span>
         </div>
 
@@ -516,7 +580,7 @@ function RealtimeCandleChartComponent({
 
         {loading && (
           <div className="rt-overlay-state mono">
-            Streaming 0-delay {meta.hlCoin} candles…
+            Loading live {meta.hlCoin ?? `${meta.exchange ?? 'US'}:${meta.ticker}`} candles…
           </div>
         )}
 
@@ -528,7 +592,7 @@ function RealtimeCandleChartComponent({
               className="ipo-notice-peer-btn mono"
               onClick={onFallbackToTradingView}
             >
-              Switch to TradingView Chart
+              Open TradingView Chart
             </button>
           </div>
         )}

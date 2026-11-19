@@ -116,6 +116,75 @@ export async function fetchHyperliquidDexCtxMap(
   return out;
 }
 
+let cachedHip3DexNames: string[] | null = null;
+let lastDexDiscoveryMs = 0;
+
+async function discoverHip3DexNames(signal?: AbortSignal): Promise<string[]> {
+  const now = Date.now();
+  if (cachedHip3DexNames && now - lastDexDiscoveryMs < 10 * 60_000) {
+    return cachedHip3DexNames;
+  }
+
+  try {
+    const res = await fetch(HL_INFO_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'perpDexs' }),
+      signal,
+    });
+    if (!res.ok) return ['xyz'];
+    const raw = (await res.json()) as Array<{ name?: string } | null>;
+    if (!Array.isArray(raw)) return ['xyz'];
+
+    const names = new Set<string>(['xyz']);
+    for (const item of raw) {
+      const name = item?.name?.trim();
+      if (name && /^[a-zA-Z0-9_-]{1,24}$/.test(name)) {
+        names.add(name);
+      }
+    }
+    const list = Array.from(names).slice(0, 12);
+    cachedHip3DexNames = list;
+    lastDexDiscoveryMs = now;
+    return list;
+  } catch {
+    return cachedHip3DexNames ?? ['xyz'];
+  }
+}
+
+/**
+ * Fetches live markets across ALL active Hyperliquid HIP-3 builder DEXes (xyz, io, para, etc.).
+ * When a ticker trades on multiple DEXes, keeps xyz: if active or highest 24h notional volume.
+ */
+export async function fetchAllHyperliquidHip3CtxMap(
+  signal?: AbortSignal,
+): Promise<Record<string, HlAssetCtx>> {
+  const dexNames = await discoverHip3DexNames(signal);
+  const settled = await Promise.allSettled(
+    dexNames.map((dex) => fetchHyperliquidDexCtxMap(dex, signal)),
+  );
+
+  const merged: Record<string, HlAssetCtx> = {};
+  for (const res of settled) {
+    if (res.status !== 'fulfilled') continue;
+    for (const [ticker, ctx] of Object.entries(res.value)) {
+      const existing = merged[ticker];
+      if (!existing) {
+        merged[ticker] = ctx;
+      } else {
+        const existingIsXyz = existing.coin.startsWith('xyz:');
+        const nextIsXyz = ctx.coin.startsWith('xyz:');
+        if (nextIsXyz && !existingIsXyz) {
+          merged[ticker] = ctx;
+        } else if (existingIsXyz === nextIsXyz && ctx.dayNtlVlm > existing.dayNtlVlm) {
+          merged[ticker] = ctx;
+        }
+      }
+    }
+  }
+  return merged;
+}
+
 export async function fetchHyperliquidCandles(
   coin: string,
   interval: HlInterval,

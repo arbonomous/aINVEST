@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Flame, Sparkles } from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
 import { generateAiBrief, type AiMarketBrief } from '../lib/aiBriefEngine';
-import {
-  fetchHyperliquidCandles,
-  type HlAssetCtx,
-  type HlCandle,
-} from '../lib/hyperliquidFeed';
+import type { HlCandle } from '../lib/hyperliquidFeed';
+import { fetchUniversalCandles, type MarketQuote } from '../lib/universalFeed';
 
 interface AiIntelligencePanelProps {
   meta: TickerMeta;
-  liveCtx: HlAssetCtx | null;
+  liveQuote: MarketQuote | null;
   onSelectPriceLevel: (price: number) => void;
 }
 
@@ -22,14 +19,18 @@ function pad2(n: number): string {
 
 export function AiIntelligencePanel({
   meta,
-  liveCtx,
+  liveQuote,
   onSelectPriceLevel,
 }: AiIntelligencePanelProps) {
   const [tab, setTab] = useState<BriefTab>('overview');
-  const [candles15m, setCandles15m] = useState<HlCandle[]>([]);
-  const [candles1h, setCandles1h] = useState<HlCandle[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [candleState, setCandleState] = useState<{
+    reqKey: string;
+    c15: HlCandle[];
+    c60: HlCandle[];
+  } | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  const reqKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}`;
 
   // Tick 1s countdown only when viewing a ticker with unlock waves (e.g. ANT)
   useEffect(() => {
@@ -39,42 +40,47 @@ export function AiIntelligencePanel({
   }, [meta.unlockWaves]);
 
   useEffect(() => {
+    if (meta.ipoStatus === 'upcoming') return;
+
     let cancelled = false;
     const controller = new AbortController();
 
-    const load = async (initial: boolean) => {
-      if (initial) setLoading(true);
+    const load = async () => {
       try {
-        const [c15, c60] = await Promise.all([
-          fetchHyperliquidCandles(meta.hlCoin, '15m', 120, controller.signal),
-          fetchHyperliquidCandles(meta.hlCoin, '1h', 120, controller.signal),
+        const [r15, r60] = await Promise.all([
+          fetchUniversalCandles(meta.ticker, meta.hlCoin, '15m', 120, controller.signal),
+          fetchUniversalCandles(meta.ticker, meta.hlCoin, '1h', 120, controller.signal),
         ]);
         if (!cancelled) {
-          setCandles15m(c15);
-          setCandles1h(c60);
-          setLoading(false);
+          setCandleState({ reqKey, c15: r15.candles, c60: r60.candles });
         }
       } catch {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setCandleState({ reqKey, c15: [], c60: [] });
+        }
       }
     };
 
-    void load(true);
-    const pollId = window.setInterval(() => void load(false), 30_000);
+    void load();
+    const pollId = window.setInterval(() => void load(), 30_000);
 
     return () => {
       cancelled = true;
       controller.abort();
       window.clearInterval(pollId);
     };
-  }, [meta.hlCoin]);
+  }, [reqKey, meta.ticker, meta.hlCoin, meta.ipoStatus]);
 
-  const brief: AiMarketBrief | null = useMemo(
-    () => generateAiBrief(meta.ticker, candles15m, candles1h, liveCtx),
-    [meta.ticker, candles15m, candles1h, liveCtx],
-  );
+  const isCurrent = candleState?.reqKey === reqKey;
+  const loading = meta.ipoStatus !== 'upcoming' && !isCurrent;
 
-  // Next unlock countdown for ANT S-1 waves
+  const brief: AiMarketBrief | null = useMemo(() => {
+    const c15 = isCurrent ? candleState.c15 : [];
+    const c60 = isCurrent ? candleState.c60 : [];
+    return generateAiBrief(meta, c15, c60, liveQuote);
+  }, [meta, isCurrent, candleState, liveQuote]);
+
+  // Next unlock countdown for IPOs with staggered S-1 unlock waves
   const unlockInfo = useMemo(() => {
     if (!meta.unlockWaves?.length) return null;
     const next = meta.unlockWaves.find(
@@ -142,9 +148,9 @@ export function AiIntelligencePanel({
 
           <p className="ai-headline">
             {loading && !brief
-              ? `Pulling live 15m/1h structure, VWAP, momentum, and funding for ${meta.ticker}…`
+              ? `Pulling live 15m/1h structure, VWAP, momentum, and flow for ${meta.ticker}…`
               : brief?.summaryHeadline ??
-                `Insufficient live candles for ${meta.ticker} quantitative synthesis.`}
+                `Loading quantitative structure for ${meta.ticker}.`}
           </p>
 
           {brief && (
@@ -164,7 +170,7 @@ export function AiIntelligencePanel({
               ['overview', 'OVERVIEW'],
               ['levels', 'LEVELS'],
               ['positioning', 'FLOW'],
-              ['catalyst', 'CATALYST'],
+              ['catalyst', meta.isIpo ? 'IPO / S-1' : 'CATALYST'],
             ] as Array<[BriefTab, string]>
           ).map(([id, label]) => (
             <button
@@ -227,6 +233,25 @@ export function AiIntelligencePanel({
 
         {tab === 'catalyst' && (
           <div className="ai-catalyst-block">
+            {meta.isIpo && (
+              <div className="ipo-deal-strip mono">
+                <div className="ipo-deal-head">
+                  <span className="ipo-deal-tag">
+                    <Flame size={11} />
+                    <span>
+                      {meta.ipoStatus === 'upcoming' ? 'UPCOMING IPO' : 'RECENT IPO'}
+                    </span>
+                  </span>
+                  <span>{meta.exchange ?? 'US MKT'}</span>
+                </div>
+                <div className="ipo-deal-meta-row">
+                  {meta.ipoDate && <span>DATE: {meta.ipoDate}</span>}
+                  {meta.ipoRangeLabel && <span>TERMS: {meta.ipoRangeLabel}</span>}
+                  {meta.ipoRaisedLabel && <span>{meta.ipoRaisedLabel}</span>}
+                </div>
+              </div>
+            )}
+
             {unlockInfo && (
               <div className="mini-countdown-box">
                 <div className="countdown-target-row">

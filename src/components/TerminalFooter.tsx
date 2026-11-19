@@ -12,9 +12,10 @@ export function TerminalFooter({ meta }: TerminalFooterProps) {
     <footer className="terminal-footer">
       <div className="terminal-footer-inner">
         <p className="footer-disclaimer">
-          <strong>aINVEST</strong> streams 0-delay 24/7 Hyperliquid HIP-3 equity &amp;
-          macro perp feeds alongside real-time quantitative AI briefs, technical
-          oscillator consensus, and open trader rooms for informational monitoring only —
+          <strong>aINVEST</strong> streams unified live market feeds across 7,290+ US
+          stocks, ETFs, recent &amp; upcoming IPOs (NASDAQ, NYSE, AMEX) and 24/7
+          Hyperliquid HIP-3 markets alongside real-time quantitative AI briefs, technical
+          consensus, and open per-ticker trader rooms for informational monitoring only —
           not investment advice.
         </p>
 

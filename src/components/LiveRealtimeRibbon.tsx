@@ -1,110 +1,224 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Calculator, Zap } from 'lucide-react';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Calculator,
+  Flame,
+  Star,
+  Zap,
+} from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
 import {
   HyperliquidStream,
   type HlAssetCtx,
 } from '../lib/hyperliquidFeed';
+import {
+  fetchUniversalQuote,
+  hlCtxToQuote,
+  type MarketQuote,
+} from '../lib/universalFeed';
 
 interface LiveRealtimeRibbonProps {
   meta: TickerMeta;
-  initialCtx: HlAssetCtx | null;
-  onLiveCtxUpdate: (ctx: HlAssetCtx) => void;
+  initialHlCtx: HlAssetCtx | null;
+  fallbackQuote: MarketQuote | null;
+  isPinned: boolean;
+  onTogglePin: () => void;
+  onLiveHlUpdate: (ctx: HlAssetCtx) => void;
+  onLiveQuoteUpdate: (quote: MarketQuote) => void;
   onSyncLivePrice: (price: number) => void;
 }
 
 function formatCompactUsd(val: number): string {
   if (!Number.isFinite(val) || val <= 0) return '—';
+  if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
   if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`;
   if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`;
   if (val >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
   return `$${val.toFixed(0)}`;
 }
 
+function formatCompactShares(val: number): string {
+  if (!Number.isFinite(val) || val <= 0) return '—';
+  if (val >= 1e9) return `${(val / 1e9).toFixed(2)}B`;
+  if (val >= 1e6) return `${(val / 1e6).toFixed(2)}M`;
+  if (val >= 1e3) return `${(val / 1e3).toFixed(1)}K`;
+  return `${Math.round(val)}`;
+}
+
 function formatMarketCap(billions: number): string {
   if (billions >= 1000) return `$${(billions / 1000).toFixed(2)}T`;
-  return `$${billions.toFixed(1)}B`;
+  if (billions >= 1) return `$${billions.toFixed(1)}B`;
+  return `$${(billions * 1000).toFixed(0)}M`;
 }
 
 export function LiveRealtimeRibbon({
   meta,
-  initialCtx,
-  onLiveCtxUpdate,
+  initialHlCtx,
+  fallbackQuote,
+  isPinned,
+  onTogglePin,
+  onLiveHlUpdate,
+  onLiveQuoteUpdate,
   onSyncLivePrice,
 }: LiveRealtimeRibbonProps) {
-  const [liveCtx, setLiveCtx] = useState<HlAssetCtx | null>(initialCtx);
-  const [wsConnected, setWsConnected] = useState(false);
+  const [streamQuote, setStreamQuote] = useState<MarketQuote | null>(null);
+  const [wsState, setWsState] = useState<{ key: string; connected: boolean }>({
+    key: '',
+    connected: false,
+  });
   const [flashDir, setFlashDir] = useState<'up' | 'down' | null>(null);
   const prevPxRef = useRef<number | null>(null);
   const flashTimerRef = useRef<number | null>(null);
-  const onUpdateRef = useRef(onLiveCtxUpdate);
+  const onHlRef = useRef(onLiveHlUpdate);
+  const onQuoteRef = useRef(onLiveQuoteUpdate);
+
+  const streamKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}`;
+  const wsConnected = wsState.key === streamKey && wsState.connected;
 
   useEffect(() => {
-    onUpdateRef.current = onLiveCtxUpdate;
-  }, [onLiveCtxUpdate]);
+    onHlRef.current = onLiveHlUpdate;
+  }, [onLiveHlUpdate]);
+
+  useEffect(() => {
+    onQuoteRef.current = onLiveQuoteUpdate;
+  }, [onLiveQuoteUpdate]);
+
+  const triggerFlash = (nextPx: number) => {
+    const prevPx = prevPxRef.current;
+    if (prevPx !== null && Math.abs(nextPx - prevPx) > 0.0001) {
+      setFlashDir(nextPx > prevPx ? 'up' : 'down');
+      if (flashTimerRef.current !== null) {
+        window.clearTimeout(flashTimerRef.current);
+      }
+      flashTimerRef.current = window.setTimeout(() => setFlashDir(null), 450);
+    }
+    prevPxRef.current = nextPx;
+  };
 
   useEffect(() => {
     prevPxRef.current = null;
-    const stream = new HyperliquidStream(meta.hlCoin, {
-      onStatus: setWsConnected,
-      onAssetCtx: (next) => {
-        const prevPx = prevPxRef.current;
-        if (prevPx !== null && Math.abs(next.markPx - prevPx) > 0.0001) {
-          setFlashDir(next.markPx > prevPx ? 'up' : 'down');
-          if (flashTimerRef.current !== null) {
-            window.clearTimeout(flashTimerRef.current);
-          }
-          flashTimerRef.current = window.setTimeout(() => setFlashDir(null), 450);
+
+    // Tier 1: Hyperliquid 0-delay WebSocket when ticker is on a HIP-3 DEX
+    if (meta.hlCoin) {
+      const stream = new HyperliquidStream(meta.hlCoin, {
+        onStatus: (connected) => setWsState({ key: streamKey, connected }),
+        onAssetCtx: (next) => {
+          triggerFlash(next.markPx);
+          const q = hlCtxToQuote(next);
+          setStreamQuote(q);
+          onHlRef.current(next);
+          onQuoteRef.current(q);
+        },
+      });
+      stream.connect();
+
+      return () => {
+        stream.destroy();
+        if (flashTimerRef.current !== null) {
+          window.clearTimeout(flashTimerRef.current);
         }
-        prevPxRef.current = next.markPx;
-        setLiveCtx(next);
-        onUpdateRef.current(next);
-      },
-    });
-    stream.connect();
+      };
+    }
+
+    // Tier 2: Universal Exchange Live Quote polling for ALL NASDAQ/NYSE/AMEX stocks & IPOs
+    if (meta.ipoStatus === 'upcoming') {
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    const pollQuote = async () => {
+      try {
+        const q = await fetchUniversalQuote(meta.ticker, controller.signal);
+        if (!cancelled && q && q.price !== null) {
+          triggerFlash(q.price);
+          setStreamQuote(q);
+          setWsState({ key: streamKey, connected: true });
+          onQuoteRef.current(q);
+        }
+      } catch {
+        // Keep last quote or fallback
+      }
+    };
+
+    void pollQuote();
+    const id = window.setInterval(() => void pollQuote(), 12_000);
 
     return () => {
-      stream.destroy();
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(id);
       if (flashTimerRef.current !== null) {
         window.clearTimeout(flashTimerRef.current);
       }
     };
-  }, [meta.hlCoin]);
+  }, [streamKey, meta.ticker, meta.hlCoin, meta.ipoStatus]);
 
-  const ctx =
-    liveCtx && liveCtx.coin === meta.hlCoin ? liveCtx : initialCtx;
-  const livePrice = ctx?.markPx ?? null;
-  const refPrice = meta.referencePrice ?? ctx?.prevDayPx ?? null;
+  const activeQuote: MarketQuote | null =
+    streamQuote && streamQuote.ticker === meta.ticker
+      ? streamQuote
+      : initialHlCtx && initialHlCtx.ticker === meta.ticker
+        ? hlCtxToQuote(initialHlCtx)
+        : fallbackQuote && fallbackQuote.ticker === meta.ticker
+          ? fallbackQuote
+          : null;
+
+  const livePrice = activeQuote?.price ?? null;
+  const refPrice = meta.referencePrice ?? activeQuote?.prevClose ?? null;
   const diff =
     livePrice !== null && refPrice !== null && refPrice > 0
       ? livePrice - refPrice
-      : null;
+      : activeQuote?.change ?? null;
   const pct =
     diff !== null && refPrice !== null && refPrice > 0
       ? (diff / refPrice) * 100
-      : null;
+      : activeQuote?.changePct ?? null;
   const impliedCapBillions =
     livePrice !== null && meta.dilutedSharesBillions
       ? livePrice * meta.dilutedSharesBillions
       : null;
-  const isUp = diff !== null && diff >= 0;
+  const isUp = diff !== null ? diff >= 0 : pct !== null ? pct >= 0 : true;
+  const isHyperliquid = activeQuote?.source === 'hyperliquid' || Boolean(meta.hlCoin);
+
+  const venueStatusText = meta.hlCoin
+    ? `${meta.sector} • ${meta.hlCoin} ${wsConnected ? 'WS 24/7' : '24/7'}`
+    : meta.ipoStatus === 'upcoming'
+      ? `${meta.sector} • ${meta.exchange ?? 'US'} PIPELINE`
+      : `${meta.sector} • ${activeQuote?.exchangeLabel ?? meta.exchange ?? 'US MKT'} ${
+          activeQuote?.source === 'yahoo'
+            ? activeQuote.marketState
+            : activeQuote?.source === 'directory'
+              ? 'LAST CLOSE'
+              : 'SYNC'
+        }`;
 
   return (
     <section
       className="terminal-card live-ribbon"
-      aria-label={`Zero-Delay Real-Time Feed for ${meta.name} (${meta.ticker})`}
+      aria-label={`Live Market Feed for ${meta.name} (${meta.ticker})`}
     >
       <div className="live-ribbon-left">
         <div className="live-ribbon-badge-group">
-          <span className="live-zero-badge">
-            <Zap size={11} />
+          <span
+            className={`live-zero-badge${meta.isIpo ? ' live-zero-badge--ipo' : ''}`}
+          >
+            {meta.isIpo ? <Flame size={11} /> : <Zap size={11} />}
             <span>{meta.ticker}</span>
           </span>
           <div className="live-ticker-title-stack">
-            <span className="live-company-name">{meta.name}</span>
-            <span className="live-venue-tag mono">
-              {meta.sector} • {meta.hlCoin} {wsConnected ? 'WS' : 'REST'}
-            </span>
+            <div className="live-company-row">
+              <span className="live-company-name">{meta.name}</span>
+              {meta.isIpo && (
+                <span className="ribbon-ipo-pill mono">
+                  {meta.ipoStatus === 'upcoming'
+                    ? `UPCOMING IPO • ${meta.ipoDate ?? '2026'}`
+                    : `IPO${meta.ipoDate ? ` • ${meta.ipoDate}` : ''}`}
+                </span>
+              )}
+            </div>
+            <span className="live-venue-tag mono">{venueStatusText}</span>
           </div>
         </div>
 
@@ -119,10 +233,14 @@ export function LiveRealtimeRibbon({
                   : ''
             }`}
           >
-            {livePrice !== null ? `$${livePrice.toFixed(2)}` : 'Syncing…'}
+            {livePrice !== null
+              ? `$${livePrice.toFixed(2)}`
+              : meta.ipoStatus === 'upcoming'
+                ? meta.ipoRangeLabel ?? 'PRE-IPO'
+                : 'Live Chart'}
           </span>
 
-          {pct !== null && diff !== null && (
+          {pct !== null && (
             <span
               className={`live-ipo-spread mono ${
                 isUp ? 'text-emerald' : 'text-crimson'
@@ -131,8 +249,10 @@ export function LiveRealtimeRibbon({
               {isUp ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
               <span>
                 {isUp ? '+' : ''}
-                {pct.toFixed(2)}% ({isUp ? '+' : '-'}${Math.abs(diff).toFixed(2)}{' '}
-                vs {meta.referenceLabel})
+                {pct.toFixed(2)}%
+                {diff !== null
+                  ? ` (${isUp ? '+' : '-'}$${Math.abs(diff).toFixed(2)} vs ${meta.referenceLabel})`
+                  : ''}
               </span>
             </span>
           )}
@@ -143,7 +263,7 @@ export function LiveRealtimeRibbon({
         {impliedCapBillions !== null && (
           <>
             <div className="ribbon-stat">
-              <span className="ribbon-stat-label">LIVE MKT CAP</span>
+              <span className="ribbon-stat-label">MKT CAP</span>
               <span className="ribbon-stat-val">
                 {formatMarketCap(impliedCapBillions)}
               </span>
@@ -152,36 +272,96 @@ export function LiveRealtimeRibbon({
           </>
         )}
 
-        <div className="ribbon-stat">
-          <span className="ribbon-stat-label">24H VOL</span>
-          <span className="ribbon-stat-val">
-            {ctx ? formatCompactUsd(ctx.dayNtlVlm) : '—'}
-          </span>
-        </div>
+        {isHyperliquid ? (
+          <>
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">24H VOL</span>
+              <span className="ribbon-stat-val">
+                {activeQuote ? formatCompactUsd(activeQuote.dayNtlVlm) : '—'}
+              </span>
+            </div>
 
-        <span className="ribbon-sep" aria-hidden="true" />
+            <span className="ribbon-sep" aria-hidden="true" />
 
-        <div className="ribbon-stat">
-          <span className="ribbon-stat-label">OPEN INT</span>
-          <span className="ribbon-stat-val">
-            {ctx ? formatCompactUsd(ctx.openInterest) : '—'}
-          </span>
-        </div>
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">OPEN INT</span>
+              <span className="ribbon-stat-val">
+                {activeQuote?.openInterest != null
+                  ? formatCompactUsd(activeQuote.openInterest)
+                  : '—'}
+              </span>
+            </div>
 
-        <span className="ribbon-sep" aria-hidden="true" />
+            <span className="ribbon-sep" aria-hidden="true" />
 
-        <div className="ribbon-stat">
-          <span className="ribbon-stat-label">1H FUNDING</span>
-          <span
-            className={`ribbon-stat-val ${
-              ctx && ctx.funding < 0 ? 'text-crimson' : 'text-emerald'
-            }`}
-          >
-            {ctx
-              ? `${ctx.funding >= 0 ? '+' : ''}${(ctx.funding * 100).toFixed(4)}%`
-              : '—'}
-          </span>
-        </div>
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">1H FUNDING</span>
+              <span
+                className={`ribbon-stat-val ${
+                  activeQuote?.funding != null && activeQuote.funding < 0
+                    ? 'text-crimson'
+                    : 'text-emerald'
+                }`}
+              >
+                {activeQuote?.funding != null
+                  ? `${activeQuote.funding >= 0 ? '+' : ''}${(activeQuote.funding * 100).toFixed(4)}%`
+                  : '—'}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">SESSION VOL</span>
+              <span className="ribbon-stat-val">
+                {activeQuote && activeQuote.volume > 0
+                  ? formatCompactShares(activeQuote.volume)
+                  : '—'}
+              </span>
+            </div>
+
+            <span className="ribbon-sep" aria-hidden="true" />
+
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">
+                {meta.ipoRangeLabel ? 'IPO TERMS' : 'DAY RANGE'}
+              </span>
+              <span className="ribbon-stat-val">
+                {meta.ipoRangeLabel
+                  ? meta.ipoRangeLabel
+                  : activeQuote?.dayLow && activeQuote?.dayHigh
+                    ? `$${activeQuote.dayLow.toFixed(2)}–$${activeQuote.dayHigh.toFixed(2)}`
+                    : activeQuote?.fiftyTwoWeekLow && activeQuote?.fiftyTwoWeekHigh
+                      ? `$${activeQuote.fiftyTwoWeekLow.toFixed(0)}–$${activeQuote.fiftyTwoWeekHigh.toFixed(0)} (52W)`
+                      : '—'}
+              </span>
+            </div>
+
+            <span className="ribbon-sep" aria-hidden="true" />
+
+            <div className="ribbon-stat">
+              <span className="ribbon-stat-label">EXCHANGE</span>
+              <span className="ribbon-stat-val text-emerald">
+                {activeQuote?.exchangeLabel ?? meta.exchange ?? 'US MKT'}
+              </span>
+            </div>
+          </>
+        )}
+
+        <button
+          type="button"
+          className={`ribbon-pin-btn${isPinned ? ' pinned' : ''}`}
+          onClick={onTogglePin}
+          title={
+            isPinned
+              ? `Unpin ${meta.ticker} from War Room bar`
+              : `Pin ${meta.ticker} to War Room bar`
+          }
+          aria-pressed={isPinned}
+        >
+          <Star size={12} fill={isPinned ? 'currentColor' : 'none'} />
+          <span>{isPinned ? 'Pinned' : 'Pin'}</span>
+        </button>
 
         {livePrice !== null && (
           <button

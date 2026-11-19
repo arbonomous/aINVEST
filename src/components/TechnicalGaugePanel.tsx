@@ -1,13 +1,17 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type { TickerMeta } from '../data/tickers';
-import { fetchHyperliquidCandles } from '../lib/hyperliquidFeed';
 import {
   evaluateTechnicals,
   type TechnicalSummary,
 } from '../lib/technicalEngine';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
+import { fetchUniversalCandles } from '../lib/universalFeed';
+import { TradingViewEmbed } from './TradingViewEmbed';
 
 type TaInterval = '15m' | '1h';
+
+const TV_TECHNICAL_SCRIPT =
+  'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
 
 interface TechnicalGaugePanelProps {
   meta: TickerMeta;
@@ -19,42 +23,79 @@ function TechnicalGaugePanelComponent({
   themeId,
 }: TechnicalGaugePanelProps) {
   const [interval, setInterval] = useState<TaInterval>('15m');
-  const [summary, setSummary] = useState<TechnicalSummary | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [resultState, setResultState] = useState<{
+    reqKey: string;
+    summary: TechnicalSummary | null;
+    useTvFallback: boolean;
+  } | null>(null);
 
   const palette = THEME_MAP[themeId];
+  const reqKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}:${interval}`;
 
   useEffect(() => {
+    if (meta.ipoStatus === 'upcoming') return;
+
     let cancelled = false;
     const controller = new AbortController();
 
-    const load = async (initial: boolean) => {
-      if (initial) setLoading(true);
+    const load = async () => {
       try {
-        const candles = await fetchHyperliquidCandles(
+        const res = await fetchUniversalCandles(
+          meta.ticker,
           meta.hlCoin,
           interval,
           160,
           controller.signal,
         );
         if (!cancelled) {
-          setSummary(evaluateTechnicals(candles));
-          setLoading(false);
+          const evaluated = evaluateTechnicals(res.candles);
+          setResultState({
+            reqKey,
+            summary: evaluated,
+            useTvFallback: !evaluated,
+          });
         }
       } catch {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setResultState({
+            reqKey,
+            summary: null,
+            useTvFallback: true,
+          });
+        }
       }
     };
 
-    void load(true);
-    const pollId = window.setInterval(() => void load(false), 30_000);
+    void load();
+    const pollId = window.setInterval(() => void load(), 30_000);
 
     return () => {
       cancelled = true;
       controller.abort();
       window.clearInterval(pollId);
     };
-  }, [meta.hlCoin, interval]);
+  }, [reqKey, meta.ticker, meta.hlCoin, meta.ipoStatus, interval]);
+
+  const isCurrent = resultState?.reqKey === reqKey;
+  const summary = isCurrent ? resultState.summary : null;
+  const useTvFallback = isCurrent ? resultState.useTvFallback : false;
+  const loading = meta.ipoStatus !== 'upcoming' && !isCurrent;
+
+  const tvGaugeConfig = useMemo(
+    () =>
+      JSON.stringify({
+        interval,
+        width: '100%',
+        isTransparent: true,
+        height: 360,
+        symbol: meta.tvSymbol,
+        showIntervalTabs: false,
+        displayMode: 'single',
+        locale: 'en',
+        colorTheme: palette.tvTheme,
+      }),
+    [interval, meta.tvSymbol, palette.tvTheme],
+  );
 
   const needleDeg = summary
     ? Math.max(-72, Math.min(72, summary.score * 78))
@@ -103,9 +144,23 @@ function TechnicalGaugePanelComponent({
       </div>
 
       <div className="ta-live-body">
-        {loading && !summary ? (
+        {loading && !summary && !useTvFallback ? (
           <div className="ta-loading-state mono">
             Computing {interval} oscillators &amp; MAs for {meta.ticker}…
+          </div>
+        ) : meta.ipoStatus === 'upcoming' ? (
+          <div className="ta-loading-state mono">
+            Pre-IPO Pipeline ({meta.ipoDate ?? 'Upcoming'}) — technical consensus activates
+            automatically once {meta.ticker} begins trading.
+          </div>
+        ) : useTvFallback && !summary ? (
+          <div className="ta-tv-fallback-wrap">
+            <TradingViewEmbed
+              scriptSrc={TV_TECHNICAL_SCRIPT}
+              configJson={tvGaugeConfig}
+              fillHeight
+              ariaLabel={`TradingView Technical Analysis for ${meta.tvSymbol}`}
+            />
           </div>
         ) : !summary ? (
           <div className="ta-loading-state mono">

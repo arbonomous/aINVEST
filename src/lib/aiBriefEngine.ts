@@ -1,12 +1,13 @@
+import type { TickerMeta } from '../data/tickers';
 import {
   computeAtr,
   computeEma,
   computeLatestRsi,
   computeSessionVwap,
-  type HlAssetCtx,
   type HlCandle,
 } from './hyperliquidFeed';
 import { computeLatestMacd, evaluateTechnicals } from './technicalEngine';
+import type { MarketQuote } from './universalFeed';
 
 export interface AiKeyLevel {
   label: string;
@@ -33,26 +34,117 @@ function fmtUsd(n: number): string {
 }
 
 function fmtCompact(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '—';
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
   return `$${n.toFixed(0)}`;
 }
 
+function fmtShares(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '—';
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B sh`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M sh`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K sh`;
+  return `${Math.round(n)} sh`;
+}
+
 /**
  * Generates real-time quantitative AI market intelligence from live 15m/1h candles
- * and Hyperliquid orderbook/funding context. Zero fabricated prices or guesses.
+ * and unified market quote (Hyperliquid 24/7 perps OR NASDAQ/NYSE/AMEX stocks & IPOs).
+ * Also synthesizes a clean IPO / Reference brief when a listing has no intraday bars yet.
  */
 export function generateAiBrief(
-  ticker: string,
+  meta: TickerMeta,
   candles15m: HlCandle[],
   candles1h: HlCandle[],
-  ctx: HlAssetCtx | null,
+  quote: MarketQuote | null,
 ): AiMarketBrief | null {
-  if (candles15m.length < 20) return null;
+  const ticker = meta.ticker;
+
+  // Fallback brief for upcoming IPOs or stocks awaiting intraday candle bars
+  if (candles15m.length < 20) {
+    const refPx = quote?.price ?? meta.referencePrice ?? null;
+    if (refPx === null && !meta.isIpo) return null;
+
+    const anchor = refPx ?? 50;
+    const isUpcoming = meta.ipoStatus === 'upcoming';
+    const pct = quote?.changePct ?? null;
+    const bias: 'bull' | 'bear' | 'neutral' =
+      pct !== null && pct >= 1.5 ? 'bull' : pct !== null && pct <= -1.5 ? 'bear' : 'neutral';
+
+    const levels: AiKeyLevel[] = meta.referenceLines?.length
+      ? meta.referenceLines.map((rl) => ({
+          label: rl.title.toUpperCase(),
+          price: rl.price,
+          tone: rl.tone,
+          note: 'Key IPO / S-1 reference level',
+        }))
+      : [
+          {
+            label: 'UPSIDE +10%',
+            price: Number((anchor * 1.1).toFixed(2)),
+            tone: 'bull',
+            note: 'Breakout extension target',
+          },
+          {
+            label: meta.referenceLabel.toUpperCase(),
+            price: anchor,
+            tone: 'amber',
+            note: isUpcoming ? 'Reference valuation anchor' : 'Latest session price',
+          },
+          {
+            label: 'PULLBACK -8%',
+            price: Number((anchor * 0.92).toFixed(2)),
+            tone: 'amber',
+            note: 'Initial support zone',
+          },
+          {
+            label: 'FLOOR -15%',
+            price: Number((anchor * 0.85).toFixed(2)),
+            tone: 'bear',
+            note: 'Downside risk guardrail',
+          },
+        ];
+
+    return {
+      regime: isUpcoming
+        ? 'PRE-IPO S-1 WATCHLIST'
+        : meta.isIpo
+          ? 'EARLY IPO PRICE DISCOVERY'
+          : 'EXCHANGE QUOTE SNAPSHOT',
+      bias,
+      conviction: isUpcoming ? 50 : 58,
+      summaryHeadline: isUpcoming
+        ? `${meta.name} (${ticker}) is in the ${meta.exchange ?? 'US'} IPO pipeline (${meta.ipoDate ?? 'Upcoming'}). Floor Chat, Valuation Calc & S-1 tracker are live ahead of Day 1 trading.`
+        : refPx !== null
+          ? `${meta.name} (${ticker}) last printed ${fmtUsd(refPx)} on ${quote?.exchangeLabel ?? meta.exchange ?? 'US Market'}${pct !== null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : ''}. Full intraday bars activate as session volume prints.`
+          : `${meta.name} (${ticker}) War Room active — switch to TradingView chart or watch live session prints.`,
+      overviewBullets: [
+        `Listing Venue: ${meta.exchange ?? quote?.exchangeLabel ?? 'US Equities'} — ${meta.sector}.`,
+        meta.ipoRangeLabel
+          ? `IPO Terms: ${meta.ipoRangeLabel}${meta.ipoRaisedLabel ? ` (${meta.ipoRaisedLabel})` : ''}.`
+          : `Valuation Anchor: ${refPx !== null ? fmtUsd(refPx) : 'Pending first trade'}${meta.dilutedSharesBillions ? ` (~${meta.dilutedSharesBillions}B diluted shares)` : ''}.`,
+        'Multi-timeframe 15m/1h quantitative signals compute automatically once 20+ live bars stream in.',
+      ],
+      positioningBullets: [
+        `Market Session: ${quote?.marketState ?? (isUpcoming ? 'PRE-LISTING' : 'STANDARD')} on ${quote?.exchangeLabel ?? meta.exchange ?? 'Exchange'}.`,
+        quote && quote.volume > 0
+          ? `Reported Volume: ${fmtShares(quote.volume)} (${fmtCompact(quote.dayNtlVlm)} est. notional).`
+          : `Liquidity Watch: Awaiting regular exchange volume prints for ${ticker}.`,
+        meta.isIpo
+          ? 'IPO Volatility Profile: Expect wider opening-week spreads and rapid VWAP discovery.'
+          : 'Use the Valuation & P&L Calculator and TradingView tab for multi-day structure.',
+      ],
+      levels,
+      atrPct: null,
+      rsi15m: null,
+      vwapDistPct: null,
+    };
+  }
 
   const last = candles15m[candles15m.length - 1];
-  const price = ctx?.markPx && ctx.markPx > 0 ? ctx.markPx : last.close;
+  const price = quote?.price && quote.price > 0 ? quote.price : last.close;
 
   const tech15m = evaluateTechnicals(candles15m);
   const tech1h = candles1h.length >= 20 ? evaluateTechnicals(candles1h) : null;
@@ -71,14 +163,12 @@ export function generateAiBrief(
   const atr15m = computeAtr(candles15m, 14);
   const atrPct = atr15m ? (atr15m / price) * 100 : null;
 
-  // 24h range from last 96 x 15m candles
   const window24h = candles15m.slice(-96);
   const high24h = Math.max(...window24h.map((c) => c.high));
   const low24h = Math.min(...window24h.map((c) => c.low));
   const rangePos =
     high24h > low24h ? ((price - low24h) / (high24h - low24h)) * 100 : 50;
 
-  // Composite score combining 15m + 1h technicals & VWAP regime
   const rawScore =
     (tech15m?.score ?? 0) * 0.55 +
     (tech1h?.score ?? tech15m?.score ?? 0) * 0.35 +
@@ -108,45 +198,68 @@ export function generateAiBrief(
     regime = 'PULLBACK PRESSURE';
   }
 
+  const totalSignals =
+    (tech15m?.buyCount ?? 0) + (tech15m?.sellCount ?? 0) + (tech15m?.neutralCount ?? 0);
+
   const summaryHeadline =
     bias === 'bull'
-      ? `${ticker} holds ${vwapDistPct >= 0 ? '+' : ''}${vwapDistPct.toFixed(2)}% vs session VWAP with ${tech15m?.buyCount ?? 0}/${(tech15m?.buyCount ?? 0) + (tech15m?.sellCount ?? 0) + (tech15m?.neutralCount ?? 0)} bullish 15m signals.`
+      ? `${ticker} holds ${vwapDistPct >= 0 ? '+' : ''}${vwapDistPct.toFixed(2)}% vs session VWAP with ${tech15m?.buyCount ?? 0}/${totalSignals} bullish 15m signals.`
       : bias === 'bear'
         ? `${ticker} trades ${vwapDistPct.toFixed(2)}% vs session VWAP; sellers control short-term EMA structure (${tech15m?.sellCount ?? 0} sell signals).`
-        : `${ticker} is coiling mid-range (${rangePos.toFixed(0)}% of 24h range) near ${fmtUsd(vwap)} VWAP pivot.`;
+        : `${ticker} is coiling mid-range (${rangePos.toFixed(0)}% of recent range) near ${fmtUsd(vwap)} VWAP pivot.`;
 
   const overviewBullets: string[] = [
     `Structure: EMA(9) ${fmtUsd(ema9)} is ${emaSpreadPct >= 0 ? 'above' : 'below'} EMA(21) ${fmtUsd(ema21)} (${emaSpreadPct >= 0 ? '+' : ''}${emaSpreadPct.toFixed(2)}% spread); multi-TF bias is ${tech1h ? tech1h.verdict : 'syncing'} on 1h.`,
     `Momentum: 15m RSI(14) reads ${rsi15m !== null ? rsi15m.toFixed(1) : '—'}${macd15m ? ` with MACD histogram ${macd15m.hist >= 0 ? '+' : ''}${macd15m.hist.toFixed(2)}` : ''}.`,
-    `Volatility: 15m ATR is ${atr15m ? fmtUsd(atr15m) : '—'}${atrPct ? ` (${atrPct.toFixed(2)}% per bar)` : ''}; price sits at ${rangePos.toFixed(0)}% of 24h range (${fmtUsd(low24h)} – ${fmtUsd(high24h)}).`,
+    `Volatility: 15m ATR is ${atr15m ? fmtUsd(atr15m) : '—'}${atrPct ? ` (${atrPct.toFixed(2)}% per bar)` : ''}; price sits at ${rangePos.toFixed(0)}% of range (${fmtUsd(low24h)} – ${fmtUsd(high24h)}).`,
   ];
 
-  // Positioning bullets from Hyperliquid funding, OI, volume
-  const fundingAnn = ctx ? ctx.funding * 24 * 365 * 100 : null;
-  const fundingTone =
-    fundingAnn === null
-      ? 'Neutral'
-      : fundingAnn > 18
+  // Positioning / Flow bullets adapt cleanly between Hyperliquid 24/7 Perps and Exchange Equities/IPOs
+  let positioningBullets: string[];
+  if (quote?.source === 'hyperliquid' && quote.funding !== null) {
+    const fundingAnn = quote.funding * 24 * 365 * 100;
+    const fundingTone =
+      fundingAnn > 18
         ? 'Crowded longs (elevated positive funding)'
         : fundingAnn < -10
           ? 'Short-heavy (squeeze potential on negative funding)'
           : 'Balanced two-way positioning';
 
-  const positioningBullets: string[] = [
-    `Funding Bias: ${ctx ? `${ctx.funding >= 0 ? '+' : ''}${(ctx.funding * 100).toFixed(4)}%/hr` : '—'}${fundingAnn !== null ? ` (${fundingAnn >= 0 ? '+' : ''}${fundingAnn.toFixed(1)}% ann.)` : ''} — ${fundingTone}.`,
-    `Liquidity & OI: 24h notional volume ${ctx ? fmtCompact(ctx.dayNtlVlm) : '—'} against ${ctx ? fmtCompact(ctx.openInterest) : '—'} live open interest.`,
-    ctx?.oraclePx && ctx.oraclePx > 0
-      ? `Basis vs Oracle: Mark ${fmtUsd(price)} vs Oracle ${fmtUsd(ctx.oraclePx)} (${(((price - ctx.oraclePx) / ctx.oraclePx) * 100 >= 0 ? '+' : '')}${(((price - ctx.oraclePx) / ctx.oraclePx) * 100).toFixed(2)}% perp premium/discount).`
-      : `24/7 Perp Price Discovery: Tracking real-time mark ${fmtUsd(price)} with 0-delay WebSocket updates.`,
-  ];
+    positioningBullets = [
+      `Funding Bias: ${quote.funding >= 0 ? '+' : ''}${(quote.funding * 100).toFixed(4)}%/hr (${fundingAnn >= 0 ? '+' : ''}${fundingAnn.toFixed(1)}% ann.) — ${fundingTone}.`,
+      `Liquidity & OI: 24h notional volume ${fmtCompact(quote.dayNtlVlm)} against ${quote.openInterest !== null ? fmtCompact(quote.openInterest) : '—'} live open interest.`,
+      quote.oraclePx && quote.oraclePx > 0
+        ? `Basis vs Oracle: Mark ${fmtUsd(price)} vs Oracle ${fmtUsd(quote.oraclePx)} (${((price - quote.oraclePx) / quote.oraclePx) * 100 >= 0 ? '+' : ''}${(((price - quote.oraclePx) / quote.oraclePx) * 100).toFixed(2)}% perp premium/discount).`
+        : `24/7 Perp Price Discovery: Tracking real-time mark ${fmtUsd(price)} via ${quote.exchangeLabel}.`,
+    ];
+  } else {
+    const dayRangeStr =
+      quote?.dayLow && quote.dayHigh
+        ? `${fmtUsd(quote.dayLow)} – ${fmtUsd(quote.dayHigh)}`
+        : `${fmtUsd(low24h)} – ${fmtUsd(high24h)}`;
+    const wk52Str =
+      quote?.fiftyTwoWeekLow && quote.fiftyTwoWeekHigh
+        ? `${fmtUsd(quote.fiftyTwoWeekLow)} – ${fmtUsd(quote.fiftyTwoWeekHigh)} (${(((price - quote.fiftyTwoWeekLow) / Math.max(0.01, quote.fiftyTwoWeekHigh - quote.fiftyTwoWeekLow)) * 100).toFixed(0)}% of 52W)`
+        : null;
+
+    positioningBullets = [
+      `Exchange Flow (${quote?.exchangeLabel ?? meta.exchange ?? 'US MKT'}): Session status ${quote?.marketState ?? 'LIVE'} with ${quote && quote.volume > 0 ? `${fmtShares(quote.volume)} (${fmtCompact(quote.dayNtlVlm)} est.)` : 'active intraday bars'}.`,
+      `Session Range: Trading inside ${dayRangeStr} (${rangePos.toFixed(0)}% range position vs VWAP ${fmtUsd(vwap)}).`,
+      wk52Str
+        ? `52-Week Positioning: ${wk52Str}.`
+        : meta.referencePrice
+          ? `vs ${meta.referenceLabel}: ${fmtUsd(price)} vs ${fmtUsd(meta.referencePrice)} (${(((price - meta.referencePrice) / meta.referencePrice) * 100) >= 0 ? '+' : ''}${(((price - meta.referencePrice) / meta.referencePrice) * 100).toFixed(2)}%).`
+          : `Direct Exchange Feed: Live multi-timeframe candles & technical consensus synced for ${ticker}.`,
+    ];
+  }
 
   const atrStep = atr15m && atr15m > 0 ? atr15m : price * 0.012;
   const levels: AiKeyLevel[] = [
     {
-      label: '24H BREAKOUT',
+      label: 'RANGE BREAKOUT',
       price: high24h,
       tone: 'bull',
-      note: '24h range high resistance',
+      note: 'Recent range high resistance',
     },
     {
       label: 'VWAP PIVOT',
@@ -161,10 +274,10 @@ export function generateAiBrief(
       note: '1.5× ATR pullback cushion',
     },
     {
-      label: '24H FLOOR',
+      label: 'RANGE FLOOR',
       price: low24h,
       tone: 'bear',
-      note: '24h range low invalidation',
+      note: 'Recent range low invalidation',
     },
   ];
 

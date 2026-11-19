@@ -2,6 +2,7 @@ import { memo, useMemo, useState } from 'react';
 import { ExternalLink, Maximize2, Minimize2, Zap } from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
+import type { MarketQuote } from '../lib/universalFeed';
 import { RealtimeCandleChart } from './RealtimeCandleChart';
 import { TradingViewEmbed } from './TradingViewEmbed';
 
@@ -14,15 +15,25 @@ interface ExecutionChartPanelProps {
   meta: TickerMeta;
   prevDayPx: number | null;
   themeId: ThemeId;
+  onQuoteDiscovered?: (quote: MarketQuote) => void;
 }
 
 function ExecutionChartPanelComponent({
   meta,
   prevDayPx,
   themeId,
+  onQuoteDiscovered,
 }: ExecutionChartPanelProps) {
-  const [feedMode, setFeedMode] = useState<ChartFeedMode>('realtime');
+  const [modeState, setModeState] = useState<{
+    ticker: string;
+    mode: ChartFeedMode;
+  }>({ ticker: meta.ticker, mode: 'realtime' });
   const [expanded, setExpanded] = useState(false);
+
+  const feedMode: ChartFeedMode =
+    modeState.ticker === meta.ticker ? modeState.mode : 'realtime';
+  const setFeedMode = (mode: ChartFeedMode) =>
+    setModeState({ ticker: meta.ticker, mode });
 
   const palette = THEME_MAP[themeId];
 
@@ -56,6 +67,7 @@ function ExecutionChartPanelComponent({
   );
 
   const externalChartUrl = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(meta.tvSymbol)}`;
+  const liveVenueBadge = meta.hlCoin ?? meta.tvSymbol;
 
   return (
     <section
@@ -66,7 +78,7 @@ function ExecutionChartPanelComponent({
         <div className="panel-title-group">
           <h2 className="panel-title">LIVE EXECUTION CHART</h2>
           <span className="panel-badge panel-badge--emerald">
-            {feedMode === 'realtime' ? meta.hlCoin : meta.tvSymbol}
+            {feedMode === 'realtime' ? liveVenueBadge : meta.tvSymbol}
           </span>
 
           <div
@@ -83,7 +95,7 @@ function ExecutionChartPanelComponent({
               onClick={() => setFeedMode('realtime')}
             >
               <Zap size={10} />
-              <span>0-DELAY LIVE</span>
+              <span>{meta.hlCoin ? '0-DELAY LIVE' : 'LIVE CANDLES'}</span>
             </button>
             <button
               id="chart-mode-tradingview"
@@ -93,7 +105,7 @@ function ExecutionChartPanelComponent({
               className={`feed-mode-btn${feedMode === 'tradingview' ? ' active-tv' : ''}`}
               onClick={() => setFeedMode('tradingview')}
             >
-              <span>TRADINGVIEW (15M)</span>
+              <span>TRADINGVIEW</span>
             </button>
           </div>
         </div>
@@ -129,6 +141,7 @@ function ExecutionChartPanelComponent({
           prevDayPx={prevDayPx}
           expanded={expanded}
           themeId={themeId}
+          onQuoteDiscovered={onQuoteDiscovered}
           onFallbackToTradingView={() => setFeedMode('tradingview')}
         />
       ) : (
@@ -148,8 +161,10 @@ function ExecutionChartPanelComponent({
         <span>{meta.catalystHeadline}</span>
         <span>
           {feedMode === 'realtime'
-            ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • RSI • VOL'
-            : 'TRADINGVIEW CBOE ONE (15M DELAY) • DRAWING TOOLS'}
+            ? meta.hlCoin
+              ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • RSI • VOL'
+              : 'LIVE EXCHANGE FEED • VWAP • EMA 9/21 • RSI • VOL'
+            : 'TRADINGVIEW INTERACTIVE CHART • FULL DRAWING TOOLS'}
         </span>
       </div>
     </section>

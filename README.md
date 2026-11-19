@@ -1,14 +1,15 @@
-# aINVEST — AI-Powered Live Market Terminal
+# aINVEST — AI-Powered Live Market Terminal for All Stocks & IPOs
 
-Real-time 0-delay multi-ticker financial terminal featuring **24/7 War Rooms** for `ANT`, `NVDA`, `TSLA`, `PLTR`, `MSFT`, `META`, `GOOGL`, `AMZN`, `AAPL`, and 100+ live Hyperliquid HIP-3 equities & macro indices.
+Real-time multi-ticker financial terminal giving users **identical live War Rooms across all 7,290+ US stocks, ETFs, recent & upcoming IPOs (NASDAQ, NYSE, AMEX), and 24/7 Hyperliquid HIP-3 markets** — plus direct launch for any custom ticker symbol.
 
 ## Key Features
 
-- **0-Delay 24/7 Live Data & Streaming Charts**: Sub-second WebSocket prices and `lightweight-charts` v5 candlesticks (`1m`, `5m`, `15m`, `1h`) with VWAP, EMA 9/21, RSI(14), volume histogram, and 1-click TradingView fallback.
-- **aINVEST Quantitative AI Brief**: Live multi-timeframe market regime classification, conviction score (`0–100`), VWAP/EMA structure analysis, Hyperliquid funding & OI positioning reads, clickable AI breakout/support levels, and catalyst trackers (including Anthropic's staggered S-1 lock-up countdown).
-- **Instant Multi-Ticker Search (`⌘K`) & Shareable URLs**: Switch between 100+ live markets via `⌘K` search, the 1-click flagship War Room bar, or the left-to-right hover-pausing scrolling ticker tape — every room has a direct shareable URL (`?ticker=NVDA`).
-- **Live 17-Indicator Technical Consensus Gauge**: Real-time Moving Averages + Oscillators speedometer across `15m` and `1h` intervals.
-- **Per-Ticker Isolated Floor Chat & Bull/Bear Sentiment Poll**: Zero-login real-time trader rooms powered by public Nostr relays with customizable `@handles`, 1-click signals, and clickable `$price` tags synced to the Valuation & P&L calculator.
+- **Universal Market & IPO Coverage**: Search and open **any** US stock, ETF, recent 2025–2026 IPO (`ANT`, `SPCX`, `SKHY`, `CBRS`, `CRWV`, `BSP`, `CRCL`, `CHYM`, `VVVV`, `WWB`, `RZRA`), upcoming IPO (`NSCL`), or 24/7 Hyperliquid HIP-3 market across all discovered builder DEXes — or type any custom symbol directly.
+- **All Stocks & IPOs Explorer + Pinned Watchlist**: Browse & filter thousands of listings by IPO status, Exchange (`NASDAQ` / `NYSE` / `AMEX`), Sector, or 24/7 Live Perps, and pin (`★`) any stock or IPO to your persistent War Room switcher bar.
+- **Unified Live Streaming Charts**: Native `lightweight-charts` v5 candlesticks (`1m`, `5m`, `15m`, `1h`) with `VWAP`, `EMA 9/21`, `RSI(14)`, volume histogram, IPO/Prev-Close reference lines, 0-delay Hyperliquid WebSocket streaming for 24/7 markets, live intraday exchange feeds for all stocks/IPOs, and automatic TradingView fallback.
+- **aINVEST Quantitative AI Brief & IPO Tracker**: Live multi-timeframe regime classification, conviction score (`0–100`), VWAP/EMA structure, Hyperliquid funding/OI or exchange volume/52W flow reads, clickable breakout/support levels, and IPO deal terms / staggered S-1 lock-up countdowns.
+- **Universal 17-Indicator Technical Consensus Gauge**: Real-time Moving Averages + Oscillators speedometer across `15m` and `1h` intervals for every stock & IPO, with seamless TradingView Technical Analysis fallback.
+- **Valuation & P&L Calculator + Isolated Floor Chat**: Auto-computed implied market cap across all US equities & IPOs, position P&L simulator, and zero-login per-ticker Nostr chat rooms & Bull/Bear sentiment polls (`?ticker=SPCX`).
 - **Slate & Daylight Themes**: Bright-edged charcoal dark mode and crisp warm-paper light mode synced across UI, charts, and gauges.
 
 ## Development
