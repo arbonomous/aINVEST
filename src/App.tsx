@@ -3,6 +3,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { AiIntelligencePanel } from './components/AiIntelligencePanel';
 import { ExecutionChartPanel } from './components/ExecutionChartPanel';
 import { FloorChatPanel } from './components/FloorChatPanel';
+import { LandingPage } from './components/LandingPage';
 import { LiveRealtimeRibbon } from './components/LiveRealtimeRibbon';
 import {
   MarketExplorerModal,
@@ -12,7 +13,7 @@ import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
 import { TechnicalGaugePanel } from './components/TechnicalGaugePanel';
 import { TerminalFooter } from './components/TerminalFooter';
-import { TerminalHeader } from './components/TerminalHeader';
+import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
 import { resolveTickerMeta } from './data/tickers';
 import {
@@ -42,17 +43,17 @@ import {
   saveRecentTickers,
 } from './lib/watchlist';
 
-function getInitialTickerFromUrl(): string {
+function getInitialRouteFromUrl(): { view: AppView; ticker: string } {
   try {
     const params = new URLSearchParams(window.location.search);
     const t = params.get('ticker');
     if (t && /^[a-zA-Z0-9._-]{1,16}$/.test(t.trim())) {
-      return t.trim().toUpperCase();
+      return { view: 'terminal', ticker: t.trim().toUpperCase() };
     }
   } catch {
     // Ignore
   }
-  return 'ANT';
+  return { view: 'home', ticker: 'ANT' };
 }
 
 async function copyTextToClipboard(text: string): Promise<boolean> {
@@ -82,10 +83,10 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 }
 
 export function App() {
+  const initialRoute = useMemo(() => getInitialRouteFromUrl(), []);
   const [themeId, setThemeId] = useState<ThemeId>(() => getInitialTheme());
-  const [activeTicker, setActiveTicker] = useState<string>(() =>
-    getInitialTickerFromUrl(),
-  );
+  const [activeView, setActiveView] = useState<AppView>(initialRoute.view);
+  const [activeTicker, setActiveTicker] = useState<string>(initialRoute.ticker);
   const [ctxMap, setCtxMap] = useState<Record<string, HlAssetCtx>>({});
   const [quoteMap, setQuoteMap] = useState<Record<string, MarketQuote>>({});
   const [directory, setDirectory] = useState<DirectoryEntry[]>(() =>
@@ -140,8 +141,20 @@ export function App() {
     applyTheme(themeId);
   }, [themeId]);
 
-  // Keep browser URL & tab title cleanly synced with active War Room
+  // Keep browser URL & tab title cleanly synced with active view / War Room
   useEffect(() => {
+    if (activeView === 'home') {
+      document.title = 'aINVEST — Live Stock Market News, IPOs & AI Terminal';
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('ticker');
+        window.history.replaceState({}, '', url.toString());
+      } catch {
+        // Ignore history API restrictions
+      }
+      return;
+    }
+
     document.title = `${meta.ticker} (${meta.name}) — aINVEST Live Terminal`;
     try {
       const url = new URL(window.location.href);
@@ -150,7 +163,7 @@ export function App() {
     } catch {
       // Ignore history API restrictions
     }
-  }, [meta.ticker, meta.name]);
+  }, [activeView, meta.ticker, meta.name]);
 
   // Load full NASDAQ + NYSE + AMEX US equities & IPO directory (cached 12h)
   useEffect(() => {
@@ -218,6 +231,11 @@ export function App() {
     };
   }, []);
 
+  const handleSelectView = useCallback((view: AppView) => {
+    setActiveView(view);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const handleSelectTicker = useCallback(
     (ticker: string) => {
       const clean = ticker
@@ -227,6 +245,9 @@ export function App() {
         .replace(/^[A-Z0-9_-]+:/, '');
       if (!clean || !/^[A-Z0-9][A-Z0-9._-]{0,11}$/.test(clean)) return;
 
+      const switchingFromHome = activeView !== 'terminal';
+      setActiveView('terminal');
+
       if (clean !== activeTicker) {
         setActiveTicker(clean);
         setRecentTickers((prev) => {
@@ -234,10 +255,16 @@ export function App() {
           saveRecentTickers(next);
           return next;
         });
-        showToast(`Switched to ${clean} War Room`);
+        showToast(`Opened ${clean} War Room`);
+      } else if (switchingFromHome) {
+        showToast(`Opened ${clean} War Room`);
+      }
+
+      if (switchingFromHome) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     },
-    [activeTicker, showToast],
+    [activeTicker, activeView, showToast],
   );
 
   const handleTogglePin = useCallback(
@@ -251,8 +278,8 @@ export function App() {
         savePinnedTickers(next);
         showToast(
           exists
-            ? `Unpinned ${clean} from War Room bar`
-            : `Pinned ${clean} to War Room bar`,
+            ? `Unpinned ${clean} from Watchlist`
+            : `Pinned ${clean} to Watchlist`,
         );
         return next;
       });
@@ -286,11 +313,15 @@ export function App() {
     const ok = await copyTextToClipboard(url);
     if (ok) {
       setCopied(true);
-      showToast(`${meta.ticker} War Room link copied`);
+      showToast(
+        activeView === 'home'
+          ? 'aINVEST Markets link copied'
+          : `${meta.ticker} War Room link copied`,
+      );
     } else {
       showToast('Copy URL from address bar');
     }
-  }, [meta.ticker, showToast]);
+  }, [activeView, meta.ticker, showToast]);
 
   const defaultCalcPrice =
     activeQuote?.price ?? meta.referencePrice ?? 100;
@@ -321,16 +352,18 @@ export function App() {
         ctxMap={ctxMap}
         quoteMap={quoteMap}
         directoryMap={directoryMap}
-        activeTicker={meta.ticker}
+        activeTicker={activeView === 'terminal' ? meta.ticker : ''}
         onSelectTicker={handleSelectTicker}
       />
 
-      {/* Compact Institutional Header with Universal ⌘K Search & All Stocks/IPOs Explorer */}
+      {/* Institutional Header with Markets/Terminal Nav, Universal ⌘K Search & Explorer */}
       <TerminalHeader
+        activeView={activeView}
         activeTicker={meta.ticker}
         ctxMap={ctxMap}
         directory={directory}
         directoryMap={directoryMap}
+        onSelectView={handleSelectView}
         onSelectTicker={handleSelectTicker}
         onOpenExplorer={handleOpenExplorer}
         onShareLink={handleShareLink}
@@ -339,73 +372,87 @@ export function App() {
         onSelectTheme={handleSelectTheme}
       />
 
-      <main className="terminal-main">
-        {/* 1-Click War Room Switcher (Flagship + IPOs + User Pinned + Recent + Explorer Triggers) */}
-        <RoomSwitcherBar
-          activeTicker={meta.ticker}
+      {activeView === 'home' ? (
+        <LandingPage
           ctxMap={ctxMap}
           quoteMap={quoteMap}
+          directory={directory}
           directoryMap={directoryMap}
           pinnedTickers={pinnedTickers}
-          recentTickers={recentTickers}
+          themeId={themeId}
           onSelectTicker={handleSelectTicker}
           onOpenExplorer={handleOpenExplorer}
+          onTogglePin={handleTogglePin}
         />
+      ) : (
+        <main className="terminal-main">
+          {/* 1-Click War Room Switcher (Flagship + IPOs + User Pinned + Recent + Explorer Triggers) */}
+          <RoomSwitcherBar
+            activeTicker={meta.ticker}
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            pinnedTickers={pinnedTickers}
+            recentTickers={recentTickers}
+            onSelectTicker={handleSelectTicker}
+            onOpenExplorer={handleOpenExplorer}
+          />
 
-        {/* Active Stock / IPO Universal Live Price Ribbon */}
-        <LiveRealtimeRibbon
-          meta={meta}
-          initialHlCtx={activeHlCtx}
-          fallbackQuote={activeQuote}
-          isPinned={isPinned}
-          onTogglePin={() => handleTogglePin(meta.ticker)}
-          onLiveHlUpdate={handleLiveHlUpdate}
-          onLiveQuoteUpdate={handleLiveQuoteUpdate}
-          onSyncLivePrice={handleSelectPriceLevel}
-        />
+          {/* Active Stock / IPO Universal Live Price Ribbon */}
+          <LiveRealtimeRibbon
+            meta={meta}
+            initialHlCtx={activeHlCtx}
+            fallbackQuote={activeQuote}
+            isPinned={isPinned}
+            onTogglePin={() => handleTogglePin(meta.ticker)}
+            onLiveHlUpdate={handleLiveHlUpdate}
+            onLiveQuoteUpdate={handleLiveQuoteUpdate}
+            onSyncLivePrice={handleSelectPriceLevel}
+          />
 
-        {/* Main 70/30 Terminal Bento Grid */}
-        <div className="workspace-grid">
-          <div className="chart-column">
-            <ExecutionChartPanel
-              meta={meta}
-              prevDayPx={activeQuote?.prevClose ?? null}
-              themeId={themeId}
-              onQuoteDiscovered={handleLiveQuoteUpdate}
-            />
-            <FloorChatPanel
-              key={meta.ticker}
-              ticker={meta.ticker}
-              livePrice={activeQuote?.price ?? null}
-              onSelectPriceLevel={handleSelectPriceLevel}
-            />
+          {/* Main 70/30 Terminal Bento Grid */}
+          <div className="workspace-grid">
+            <div className="chart-column">
+              <ExecutionChartPanel
+                meta={meta}
+                prevDayPx={activeQuote?.prevClose ?? null}
+                themeId={themeId}
+                onQuoteDiscovered={handleLiveQuoteUpdate}
+              />
+              <FloorChatPanel
+                key={meta.ticker}
+                ticker={meta.ticker}
+                livePrice={activeQuote?.price ?? null}
+                onSelectPriceLevel={handleSelectPriceLevel}
+              />
+            </div>
+
+            <aside
+              className="intelligence-column"
+              aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
+            >
+              {/* Panel A — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
+              <AiIntelligencePanel
+                meta={meta}
+                liveQuote={activeQuote}
+                onSelectPriceLevel={handleSelectPriceLevel}
+              />
+
+              {/* Panel B — Dynamic Valuation & Position P&L Calculator */}
+              <ValuationCalculatorPanel
+                meta={meta}
+                livePrice={activeQuote?.price ?? null}
+                referencePrice={meta.referencePrice ?? activeQuote?.prevClose ?? null}
+                priceInput={calcPriceInput}
+                onPriceInputChange={handleCalcPriceChange}
+              />
+
+              {/* Panel C — Universal 17-Indicator Technical Consensus Gauge */}
+              <TechnicalGaugePanel meta={meta} themeId={themeId} />
+            </aside>
           </div>
-
-          <aside
-            className="intelligence-column"
-            aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
-          >
-            {/* Panel A — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
-            <AiIntelligencePanel
-              meta={meta}
-              liveQuote={activeQuote}
-              onSelectPriceLevel={handleSelectPriceLevel}
-            />
-
-            {/* Panel B — Dynamic Valuation & Position P&L Calculator */}
-            <ValuationCalculatorPanel
-              meta={meta}
-              livePrice={activeQuote?.price ?? null}
-              referencePrice={meta.referencePrice ?? activeQuote?.prevClose ?? null}
-              priceInput={calcPriceInput}
-              onPriceInputChange={handleCalcPriceChange}
-            />
-
-            {/* Panel C — Universal 17-Indicator Technical Consensus Gauge */}
-            <TechnicalGaugePanel meta={meta} themeId={themeId} />
-          </aside>
-        </div>
-      </main>
+        </main>
+      )}
 
       <TerminalFooter meta={meta} />
 

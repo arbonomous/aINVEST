@@ -4,6 +4,7 @@ Real-time multi-ticker financial terminal giving users **identical live War Room
 
 ## Key Features
 
+- **Markets & Breaking Stock News Front Page**: Yahoo-Finance-style editorial landing page with live breaking stock news (aggregating CNBC Markets/Tech & Yahoo Finance RSS feeds + TradingView Live Wire), auto-extracted clickable stock quote pills on every story, 5-benchmark Market Pulse sparklines, Trending Tickers, live Market Movers (Active / Gainers / Losers), IPO Spotlight, and persistent Watchlist.
 - **Universal Market & IPO Coverage**: Search and open **any** US stock, ETF, recent 2025–2026 IPO (`ANT`, `SPCX`, `SKHY`, `CBRS`, `CRWV`, `BSP`, `CRCL`, `CHYM`, `VVVV`, `WWB`, `RZRA`), upcoming IPO (`NSCL`), or 24/7 Hyperliquid HIP-3 market across all discovered builder DEXes — or type any custom symbol directly.
 - **All Stocks & IPOs Explorer + Pinned Watchlist**: Browse & filter thousands of listings by IPO status, Exchange (`NASDAQ` / `NYSE` / `AMEX`), Sector, or 24/7 Live Perps, and pin (`★`) any stock or IPO to your persistent War Room switcher bar.
 - **Unified Live Streaming Charts**: Native `lightweight-charts` v5 candlesticks (`1m`, `5m`, `15m`, `1h`) with `VWAP`, `EMA 9/21`, `RSI(14)`, volume histogram, IPO/Prev-Close reference lines, 0-delay Hyperliquid WebSocket streaming for 24/7 markets, live intraday exchange feeds for all stocks/IPOs, and automatic TradingView fallback.
