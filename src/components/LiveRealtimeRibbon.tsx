@@ -98,6 +98,7 @@ export function LiveRealtimeRibbon({
 
   useEffect(() => {
     prevPxRef.current = null;
+    let lastParentSyncMs = 0;
 
     // Tier 1: Hyperliquid 0-delay WebSocket when ticker is on a HIP-3 DEX
     if (meta.hlCoin) {
@@ -107,8 +108,11 @@ export function LiveRealtimeRibbon({
           triggerFlash(next.markPx);
           const q = hlCtxToQuote(next);
           setStreamQuote(q);
-          onHlRef.current(next);
-          onQuoteRef.current(q);
+          const now = Date.now();
+          if (now - lastParentSyncMs >= 2000) {
+            lastParentSyncMs = now;
+            onHlRef.current(next);
+          }
         },
       });
       stream.connect();

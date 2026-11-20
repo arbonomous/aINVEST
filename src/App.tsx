@@ -120,14 +120,20 @@ export function App() {
   const activeDirEntry = directoryMap[activeTicker] ?? null;
   const activeLiveQuote = quoteMap[activeTicker] ?? null;
 
+  // Extract ONLY stable primitive metadata so live price ticks NEVER recreate `meta` or tear down charts
+  const activeHlCoin = activeHlCtx?.coin ?? null;
+  const activeQuoteExchange = activeLiveQuote?.resolvedExchange;
+  const activeQuoteName = activeLiveQuote?.longName;
+
   const meta = useMemo(
     () =>
       resolveTickerMeta(activeTicker, {
         directoryEntry: activeDirEntry,
-        hlCtx: activeHlCtx,
-        liveQuote: activeLiveQuote,
+        hlCoin: activeHlCoin,
+        resolvedExchange: activeQuoteExchange,
+        longName: activeQuoteName,
       }),
-    [activeTicker, activeDirEntry, activeHlCtx, activeLiveQuote],
+    [activeTicker, activeDirEntry, activeHlCoin, activeQuoteExchange, activeQuoteName],
   );
 
   const activeQuote: MarketQuote | null = useMemo(() => {
@@ -147,8 +153,10 @@ export function App() {
       document.title = 'aINVEST — Live Stock Market News, IPOs & AI Terminal';
       try {
         const url = new URL(window.location.href);
-        url.searchParams.delete('ticker');
-        window.history.replaceState({}, '', url.toString());
+        if (url.searchParams.has('ticker')) {
+          url.searchParams.delete('ticker');
+          window.history.replaceState({}, '', url.toString());
+        }
       } catch {
         // Ignore history API restrictions
       }
@@ -158,8 +166,10 @@ export function App() {
     document.title = `${meta.ticker} (${meta.name}) — aINVEST Live Terminal`;
     try {
       const url = new URL(window.location.href);
-      url.searchParams.set('ticker', meta.ticker);
-      window.history.replaceState({}, '', url.toString());
+      if (url.searchParams.get('ticker') !== meta.ticker) {
+        url.searchParams.set('ticker', meta.ticker);
+        window.history.replaceState({}, '', url.toString());
+      }
     } catch {
       // Ignore history API restrictions
     }
@@ -186,7 +196,7 @@ export function App() {
     };
   }, []);
 
-  // Global 5s live refresh across ALL Hyperliquid HIP-3 builder DEXes
+  // Global live refresh across ALL Hyperliquid HIP-3 builder DEXes (skips no-op updates)
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -194,16 +204,30 @@ export function App() {
     const poll = async () => {
       try {
         const next = await fetchAllHyperliquidHip3CtxMap(controller.signal);
-        if (active && Object.keys(next).length > 0) {
-          setCtxMap((prev) => ({ ...prev, ...next }));
-        }
+        if (!active || Object.keys(next).length === 0) return;
+        setCtxMap((prev) => {
+          let changed = false;
+          for (const [k, v] of Object.entries(next)) {
+            const old = prev[k];
+            if (
+              !old ||
+              old.markPx !== v.markPx ||
+              old.prevDayPx !== v.prevDayPx ||
+              old.coin !== v.coin
+            ) {
+              changed = true;
+              break;
+            }
+          }
+          return changed ? { ...prev, ...next } : prev;
+        });
       } catch {
         // Keep last good map
       }
     };
 
     void poll();
-    const id = window.setInterval(() => void poll(), 5000);
+    const id = window.setInterval(() => void poll(), 8000);
 
     return () => {
       active = false;
@@ -297,7 +321,20 @@ export function App() {
   }, []);
 
   const handleLiveQuoteUpdate = useCallback((next: MarketQuote) => {
-    setQuoteMap((prev) => ({ ...prev, [next.ticker]: next }));
+    setQuoteMap((prev) => {
+      const old = prev[next.ticker];
+      if (
+        old &&
+        old.price === next.price &&
+        old.change === next.change &&
+        old.volume === next.volume &&
+        old.marketState === next.marketState &&
+        old.resolvedExchange === next.resolvedExchange
+      ) {
+        return prev;
+      }
+      return { ...prev, [next.ticker]: next };
+    });
   }, []);
 
   const handleSelectTheme = useCallback(

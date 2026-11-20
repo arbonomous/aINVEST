@@ -178,6 +178,7 @@ body {
   position: relative;
   display: flex;
   align-items: center;
+  contain: layout paint;
 }
 
 .ticker-marquee-track {
@@ -185,6 +186,7 @@ body {
   align-items: center;
   width: max-content;
   will-change: transform;
+  backface-visibility: hidden;
   animation: ticker-scroll-ltr 38s linear infinite;
 }
 

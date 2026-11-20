@@ -88,8 +88,13 @@ function RealtimeCandleChartComponent({
   const showEmaRef = useRef(showEma);
   const paletteRef = useRef(THEME_MAP[themeId]);
   const prevDayPxRef = useRef(prevDayPx);
+  const metaRef = useRef(meta);
   const onQuoteRef = useRef(onQuoteDiscovered);
   const onFallbackRef = useRef(onFallbackToTradingView);
+
+  useEffect(() => {
+    metaRef.current = meta;
+  }, [meta]);
 
   useEffect(() => {
     prevDayPxRef.current = prevDayPx;
@@ -250,8 +255,9 @@ function RealtimeCandleChartComponent({
     ema21SeriesRef.current = ema21Series;
 
     // Reference price lines (IPO / S-1 lines or prev day close)
-    if (meta.referenceLines && meta.referenceLines.length > 0) {
-      for (const line of meta.referenceLines) {
+    const activeMeta = metaRef.current;
+    if (activeMeta.referenceLines && activeMeta.referenceLines.length > 0) {
+      for (const line of activeMeta.referenceLines) {
         candleSeries.createPriceLine({
           price: line.price,
           color: line.tone === 'bull' ? p.bull : line.tone === 'bear' ? p.bear : p.amber,
@@ -366,7 +372,7 @@ function RealtimeCandleChartComponent({
           setLoading(false);
           if (meta.ipoStatus === 'upcoming') {
             setLoadError(
-              `${meta.name} (${meta.ticker}) is an upcoming IPO (${meta.ipoDate ?? 'Pipeline'}). Live candles start on Day 1 first print.`,
+              `${activeMeta.name} (${meta.ticker}) is an upcoming IPO (${activeMeta.ipoDate ?? 'Pipeline'}). Live candles start on Day 1 first print.`,
             );
           } else {
             // Seamlessly switch to TradingView chart so the user never sees a dead error state
@@ -498,7 +504,7 @@ function RealtimeCandleChartComponent({
       ema21SeriesRef.current = null;
       chart.remove();
     };
-  }, [meta, interval]);
+  }, [meta.ticker, meta.hlCoin, meta.ipoStatus, interval]);
 
   const isUp = readout ? readout.close >= readout.open : true;
 

@@ -613,6 +613,9 @@ export const CURATED_MAP: Record<string, TickerMeta> = Object.fromEntries(
 
 export interface ResolveTickerOptions {
   directoryEntry?: DirectoryEntry | null;
+  hlCoin?: string | null;
+  resolvedExchange?: UsExchange;
+  longName?: string;
   hlCtx?: HlAssetCtx | null;
   liveQuote?: MarketQuote | null;
 }
@@ -632,7 +635,10 @@ export function resolveTickerMeta(
   const { directoryEntry, hlCtx, liveQuote } = options;
 
   const curated = CURATED_MAP[clean];
-  const discoveredHlCoin = hlCtx?.coin ?? null;
+  const discoveredHlCoin = options.hlCoin ?? hlCtx?.coin ?? null;
+  const resolvedQuoteExchange =
+    options.resolvedExchange ?? liveQuote?.resolvedExchange;
+  const resolvedQuoteName = options.longName ?? liveQuote?.longName;
 
   if (curated) {
     const inferredShares =
@@ -671,9 +677,9 @@ export function resolveTickerMeta(
 
   const quick = QUICK_EXCHANGE_OVERRIDES[clean];
   const exchange =
-    directoryEntry?.exchange ?? liveQuote?.resolvedExchange ?? quick?.exchange;
+    directoryEntry?.exchange ?? resolvedQuoteExchange ?? quick?.exchange;
   const name =
-    directoryEntry?.name || liveQuote?.longName || quick?.name || clean;
+    directoryEntry?.name || resolvedQuoteName || quick?.name || clean;
   const isIpo = Boolean(directoryEntry?.isIpo);
   const ipoYear = directoryEntry?.ipoYear ?? null;
 
