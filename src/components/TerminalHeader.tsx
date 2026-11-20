@@ -244,55 +244,53 @@ export function TerminalHeader({
   return (
     <header className="terminal-header">
       <div className="terminal-header-inner">
-        <div className="brand-cluster">
-          <button
-            id="brand-home-btn"
-            type="button"
-            className="brand-home-btn"
-            onClick={() => onSelectView('home')}
-            title="Go to aINVEST Markets & Breaking News Front Page"
-          >
-            <div className="brand-mark" aria-hidden="true">
-              a<span className="text-emerald">I</span>
-            </div>
-            {activeView === 'terminal' ? (
-              <h1 className="brand-title">
-                <span>
-                  a<span className="text-emerald">INVEST</span>
-                </span>
-              </h1>
-            ) : (
-              <span className="brand-title">
-                <span>
-                  a<span className="text-emerald">INVEST</span>
-                </span>
+        <button
+          id="brand-home-btn"
+          type="button"
+          className="brand-home-btn"
+          onClick={() => onSelectView('home')}
+          title="Go to aINVEST Markets & Breaking News Front Page"
+        >
+          <div className="brand-mark" aria-hidden="true">
+            a<span className="text-emerald">I</span>
+          </div>
+          {activeView === 'terminal' ? (
+            <h1 className="brand-title">
+              <span>
+                a<span className="text-emerald">INVEST</span>
               </span>
-            )}
-          </button>
+            </h1>
+          ) : (
+            <span className="brand-title">
+              <span>
+                a<span className="text-emerald">INVEST</span>
+              </span>
+            </span>
+          )}
+        </button>
 
-          <nav className="primary-view-nav" aria-label="Primary sections">
-            <button
-              id="nav-view-home"
-              type="button"
-              className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
-              aria-current={activeView === 'home' ? 'page' : undefined}
-              onClick={() => onSelectView('home')}
-            >
-              <Newspaper size={12} />
-              <span>MARKETS</span>
-            </button>
-            <button
-              id="nav-view-terminal"
-              type="button"
-              className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
-              aria-current={activeView === 'terminal' ? 'page' : undefined}
-              onClick={() => onSelectView('terminal')}
-            >
-              <Activity size={12} />
-              <span>TERMINAL ({activeTicker})</span>
-            </button>
-          </nav>
-        </div>
+        <nav className="primary-view-nav" aria-label="Primary sections">
+          <button
+            id="nav-view-home"
+            type="button"
+            className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
+            aria-current={activeView === 'home' ? 'page' : undefined}
+            onClick={() => onSelectView('home')}
+          >
+            <Newspaper size={12} />
+            <span>MARKETS</span>
+          </button>
+          <button
+            id="nav-view-terminal"
+            type="button"
+            className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
+            aria-current={activeView === 'terminal' ? 'page' : undefined}
+            onClick={() => onSelectView('terminal')}
+          >
+            <Activity size={12} />
+            <span>TERMINAL ({activeTicker})</span>
+          </button>
+        </nav>
 
         {/* Universal Stock & IPO Search Bar (⌘K) + Explorer Trigger */}
         <div className="header-discovery-group">
