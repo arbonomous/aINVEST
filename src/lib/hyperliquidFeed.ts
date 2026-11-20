@@ -1,4 +1,4 @@
-export type HlInterval = '1m' | '5m' | '15m' | '1h';
+export type HlInterval = '1m' | '5m' | '15m' | '30m' | '1h' | '4h' | '1d';
 
 export interface HlCandle {
   time: number; // unix seconds (lightweight-charts UTCTimestamp)
@@ -29,7 +29,10 @@ const INTERVAL_MS: Record<HlInterval, number> = {
   '1m': 60_000,
   '5m': 5 * 60_000,
   '15m': 15 * 60_000,
+  '30m': 30 * 60_000,
   '1h': 60 * 60_000,
+  '4h': 4 * 60 * 60_000,
+  '1d': 24 * 60 * 60_000,
 };
 
 function parseNum(val: unknown): number {

@@ -36,7 +36,7 @@ interface RealtimeCandleChartProps {
   onFallbackToTradingView: () => void;
 }
 
-const INTERVALS: HlInterval[] = ['1m', '5m', '15m', '1h'];
+const INTERVALS: HlInterval[] = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
 
 interface ReadoutState {
   timeLabel: string;

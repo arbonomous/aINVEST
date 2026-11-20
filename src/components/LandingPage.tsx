@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Activity,
   ArrowDownRight,
@@ -17,7 +17,6 @@ import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
   FALLBACK_EDITORIAL_IMAGES,
-  fetchBreakingMarketNews,
   formatRelativeAge,
   getInitialEditorialNews,
   type NewsArticle,
@@ -25,6 +24,7 @@ import {
 } from '../lib/newsFeed';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
+import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
 import { TradingViewEmbed } from './TradingViewEmbed';
 
@@ -41,8 +41,14 @@ interface LandingPageProps {
   directoryMap: Record<string, DirectoryEntry>;
   pinnedTickers: string[];
   themeId: ThemeId;
+  articles: NewsArticle[];
+  liveNewsCount: number;
+  lastNewsUpdated: string;
+  refreshingNews: boolean;
+  onRefreshNews: () => void;
   onSelectTicker: (ticker: string) => void;
   onOpenExplorer: (tab?: ExplorerTab) => void;
+  onOpenDailyBread: () => void;
   onTogglePin: (ticker: string) => void;
 }
 
@@ -142,70 +148,21 @@ export function LandingPage({
   directoryMap,
   pinnedTickers,
   themeId,
+  articles,
+  liveNewsCount,
+  lastNewsUpdated,
+  refreshingNews,
+  onRefreshNews,
   onSelectTicker,
   onOpenExplorer,
+  onOpenDailyBread,
   onTogglePin,
 }: LandingPageProps) {
-  const [articles, setArticles] = useState<NewsArticle[]>(() =>
-    getInitialEditorialNews(),
-  );
-  const [liveCount, setLiveCount] = useState<number>(0);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [moverTab, setMoverTab] = useState<MoverTab>('active');
-  const [lastUpdatedLabel, setLastUpdatedLabel] = useState<string>(() =>
-    new Date().toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }),
-  );
 
   const palette = THEME_MAP[themeId];
   const pinnedSet = useMemo(() => new Set(pinnedTickers), [pinnedTickers]);
-
-  const applyNewsResult = useCallback(
-    (res: { articles: NewsArticle[]; liveCount: number }) => {
-      setArticles(res.articles);
-      setLiveCount(res.liveCount);
-      setLastUpdatedLabel(
-        new Date().toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false,
-        }),
-      );
-    },
-    [],
-  );
-
-  const handleManualRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      const res = await fetchBreakingMarketNews(true);
-      applyNewsResult(res);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [applyNewsResult]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const runFetch = (force: boolean) => {
-      void fetchBreakingMarketNews(force, controller.signal).then((res) => {
-        if (!controller.signal.aborted) {
-          applyNewsResult(res);
-        }
-      });
-    };
-
-    runFetch(false);
-    const id = window.setInterval(() => runFetch(true), 180_000);
-    return () => {
-      controller.abort();
-      window.clearInterval(id);
-    };
-  }, [applyNewsResult]);
 
   // Automatically promote the freshest live breaking news into Hero + 2 Feature slots
   const { heroStory, featurePair, streamStories, breakingLead } = useMemo(() => {
@@ -406,12 +363,14 @@ export function LandingPage({
           <button
             type="button"
             className="dispatch-refresh-btn mono"
-            onClick={() => void handleManualRefresh()}
-            disabled={refreshing}
+            onClick={onRefreshNews}
+            disabled={refreshingNews}
             title="Refresh breaking stock news wire"
           >
-            <RefreshCw size={11} className={refreshing ? 'spin-icon' : ''} />
-            <span>{liveCount > 0 ? `LIVE (${lastUpdatedLabel})` : lastUpdatedLabel}</span>
+            <RefreshCw size={11} className={refreshingNews ? 'spin-icon' : ''} />
+            <span>
+              {liveNewsCount > 0 ? `LIVE (${lastNewsUpdated})` : lastNewsUpdated}
+            </span>
           </button>
         </div>
       </section>
@@ -638,6 +597,17 @@ export function LandingPage({
             ))}
           </div>
 
+          {/* Daily Bread — Live AI Day-Trade Call Desk (Compact Preview on Landing Page) */}
+          <DailyBreadDesk
+            compact
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            breakingNews={articles}
+            onSelectTicker={onSelectTicker}
+            onOpenFullDesk={onOpenDailyBread}
+          />
+
           {/* Breaking News Feed Section with Yahoo-Style Category Tabs */}
           <section className="news-stream-panel" aria-label="Latest breaking stock market news">
             <div className="news-stream-header">
@@ -645,7 +615,7 @@ export function LandingPage({
                 <Newspaper size={14} className="text-emerald" aria-hidden="true" />
                 <h2 className="panel-title">LATEST MARKET NEWS</h2>
                 <span className="panel-badge panel-badge--emerald">
-                  {liveCount > 0 ? `${liveCount} LIVE WIRE` : 'MARKET DESK'}
+                  {liveNewsCount > 0 ? `${liveNewsCount} LIVE WIRE` : 'MARKET DESK'}
                 </span>
               </div>
 

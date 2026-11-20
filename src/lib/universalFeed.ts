@@ -193,7 +193,11 @@ interface YahooChartResponse {
   };
 }
 
-function yahooParamsForInterval(interval: HlInterval): { iv: string; range: string } {
+function yahooParamsForInterval(interval: HlInterval): {
+  iv: string;
+  range: string;
+  aggregate4h?: boolean;
+} {
   switch (interval) {
     case '1m':
       return { iv: '1m', range: '1d' };
@@ -201,9 +205,40 @@ function yahooParamsForInterval(interval: HlInterval): { iv: string; range: stri
       return { iv: '5m', range: '5d' };
     case '15m':
       return { iv: '15m', range: '5d' };
+    case '30m':
+      return { iv: '30m', range: '1mo' };
     case '1h':
       return { iv: '60m', range: '1mo' };
+    case '4h':
+      return { iv: '60m', range: '3mo', aggregate4h: true };
+    case '1d':
+      return { iv: '1d', range: '1y' };
   }
+}
+
+function aggregateCandles4h(candles: HlCandle[]): HlCandle[] {
+  const bucketSec = 4 * 3600;
+  const map = new Map<number, HlCandle>();
+  for (const c of candles) {
+    const bucket = Math.floor(c.time / bucketSec) * bucketSec;
+    const prev = map.get(bucket);
+    if (!prev) {
+      map.set(bucket, {
+        time: bucket,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+      });
+    } else {
+      prev.high = Math.max(prev.high, c.high);
+      prev.low = Math.min(prev.low, c.low);
+      prev.close = c.close;
+      prev.volume += c.volume;
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => a.time - b.time);
 }
 
 function parseYahooChartResult(
@@ -370,24 +405,27 @@ async function fetchYahooCandlesAndQuote(
 
   const task = (async (): Promise<UniversalCandleResult> => {
     const yahooSym = toYahooSymbol(ticker);
-    const { iv, range } = yahooParamsForInterval(interval);
+    const { iv, range, aggregate4h } = yahooParamsForInterval(interval);
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
       yahooSym,
-    )}?interval=${iv}&range=${range}&includePrePost=true`;
+    )}?interval=${iv}&range=${range}&includePrePost=${interval === '1d' ? 'false' : 'true'}`;
 
     const json = await fetchJsonViaRelays(url, signal);
     if (json) {
       const parsed = parseYahooChartResult(ticker, json);
-      if (parsed.candles.length > 0 || parsed.quote) {
+      const candles = aggregate4h
+        ? aggregateCandles4h(parsed.candles)
+        : parsed.candles;
+      if (candles.length > 0 || parsed.quote) {
         // If intraday returned a quote but very few candles (e.g., brand-new IPO or thin stock), try daily bars
-        if (parsed.candles.length < 5) {
+        if (candles.length < 5 && interval !== '1d') {
           const dailyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
             yahooSym,
           )}?interval=1d&range=3mo&includePrePost=false`;
           const dailyJson = await fetchJsonViaRelays(dailyUrl, signal);
           if (dailyJson) {
             const dailyParsed = parseYahooChartResult(ticker, dailyJson);
-            if (dailyParsed.candles.length > parsed.candles.length) {
+            if (dailyParsed.candles.length > candles.length) {
               const out: UniversalCandleResult = {
                 candles: dailyParsed.candles,
                 source: 'yahoo',
@@ -401,7 +439,7 @@ async function fetchYahooCandlesAndQuote(
         }
 
         const out: UniversalCandleResult = {
-          candles: parsed.candles,
+          candles,
           source: 'yahoo',
           quote: parsed.quote,
         };

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { AiIntelligencePanel } from './components/AiIntelligencePanel';
+import { DailyBreadDesk } from './components/DailyBreadDesk';
+import { DailyBreadTickerCard } from './components/DailyBreadTickerCard';
 import { ExecutionChartPanel } from './components/ExecutionChartPanel';
 import { FloorChatPanel } from './components/FloorChatPanel';
 import { LandingPage } from './components/LandingPage';
@@ -26,6 +28,11 @@ import {
   type DirectoryEntry,
 } from './lib/marketCatalog';
 import {
+  fetchBreakingMarketNews,
+  getInitialEditorialNews,
+  type NewsArticle,
+} from './lib/newsFeed';
+import {
   THEME_MAP,
   applyTheme,
   getInitialTheme,
@@ -49,6 +56,9 @@ function getInitialRouteFromUrl(): { view: AppView; ticker: string } {
     const t = params.get('ticker');
     if (t && /^[a-zA-Z0-9._-]{1,16}$/.test(t.trim())) {
       return { view: 'terminal', ticker: t.trim().toUpperCase() };
+    }
+    if (params.get('view') === 'daily-bread') {
+      return { view: 'daily-bread', ticker: 'ANT' };
     }
   } catch {
     // Ignore
@@ -108,6 +118,14 @@ export function App() {
   const [copied, setCopied] = useState<boolean>(false);
   const toastTimerRef = useRef<number | null>(null);
 
+  // Shared live breaking market news feed (used by Landing Page + Daily Bread AI catalyst engine)
+  const [articles, setArticles] = useState<NewsArticle[]>(() =>
+    getInitialEditorialNews(),
+  );
+  const [liveNewsCount, setLiveNewsCount] = useState<number>(0);
+  const [lastNewsUpdated, setLastNewsUpdated] = useState<string>('Just now');
+  const [refreshingNews, setRefreshingNews] = useState<boolean>(false);
+
   const directoryMap = useMemo<Record<string, DirectoryEntry>>(() => {
     const map: Record<string, DirectoryEntry> = {};
     for (const d of directory) {
@@ -153,8 +171,38 @@ export function App() {
       document.title = 'aINVEST — Live Stock Market News, IPOs & AI Terminal';
       try {
         const url = new URL(window.location.href);
+        let changed = false;
         if (url.searchParams.has('ticker')) {
           url.searchParams.delete('ticker');
+          changed = true;
+        }
+        if (url.searchParams.has('view')) {
+          url.searchParams.delete('view');
+          changed = true;
+        }
+        if (changed) {
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {
+        // Ignore history API restrictions
+      }
+      return;
+    }
+
+    if (activeView === 'daily-bread') {
+      document.title = 'Daily Bread — AI Day-Trade Calls | aINVEST';
+      try {
+        const url = new URL(window.location.href);
+        let changed = false;
+        if (url.searchParams.has('ticker')) {
+          url.searchParams.delete('ticker');
+          changed = true;
+        }
+        if (url.searchParams.get('view') !== 'daily-bread') {
+          url.searchParams.set('view', 'daily-bread');
+          changed = true;
+        }
+        if (changed) {
           window.history.replaceState({}, '', url.toString());
         }
       } catch {
@@ -166,14 +214,74 @@ export function App() {
     document.title = `${meta.ticker} (${meta.name}) — aINVEST Live Terminal`;
     try {
       const url = new URL(window.location.href);
+      let changed = false;
+      if (url.searchParams.has('view')) {
+        url.searchParams.delete('view');
+        changed = true;
+      }
       if (url.searchParams.get('ticker') !== meta.ticker) {
         url.searchParams.set('ticker', meta.ticker);
+        changed = true;
+      }
+      if (changed) {
         window.history.replaceState({}, '', url.toString());
       }
     } catch {
       // Ignore history API restrictions
     }
   }, [activeView, meta.ticker, meta.name]);
+
+  // Load & refresh live breaking stock market news every 3 minutes
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+
+    const poll = async () => {
+      try {
+        const res = await fetchBreakingMarketNews(false, controller.signal);
+        if (!active || controller.signal.aborted) return;
+        setArticles(res.articles);
+        setLiveNewsCount(res.liveCount);
+        setLastNewsUpdated(
+          new Date().toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }),
+        );
+      } catch {
+        // Retain existing articles
+      }
+    };
+
+    void poll();
+    const id = window.setInterval(() => void poll(), 180_000);
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearInterval(id);
+    };
+  }, []);
+
+  const handleRefreshNews = useCallback(async () => {
+    setRefreshingNews(true);
+    try {
+      const res = await fetchBreakingMarketNews(true);
+      setArticles(res.articles);
+      setLiveNewsCount(res.liveCount);
+      setLastNewsUpdated(
+        new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }),
+      );
+    } catch {
+      // Retain existing articles
+    } finally {
+      setRefreshingNews(false);
+    }
+  }, []);
 
   // Load full NASDAQ + NYSE + AMEX US equities & IPO directory (cached 12h)
   useEffect(() => {
@@ -353,7 +461,9 @@ export function App() {
       showToast(
         activeView === 'home'
           ? 'aINVEST Markets link copied'
-          : `${meta.ticker} War Room link copied`,
+          : activeView === 'daily-bread'
+            ? 'Daily Bread AI Desk link copied'
+            : `${meta.ticker} War Room link copied`,
       );
     } else {
       showToast('Copy URL from address bar');
@@ -393,7 +503,7 @@ export function App() {
         onSelectTicker={handleSelectTicker}
       />
 
-      {/* Institutional Header with Markets/Terminal Nav, Universal ⌘K Search & Explorer */}
+      {/* Institutional Header with Markets/Daily Bread/Terminal Nav, Universal ⌘K Search & Explorer */}
       <TerminalHeader
         activeView={activeView}
         activeTicker={meta.ticker}
@@ -417,10 +527,26 @@ export function App() {
           directoryMap={directoryMap}
           pinnedTickers={pinnedTickers}
           themeId={themeId}
+          articles={articles}
+          liveNewsCount={liveNewsCount}
+          lastNewsUpdated={lastNewsUpdated}
+          refreshingNews={refreshingNews}
+          onRefreshNews={() => void handleRefreshNews()}
           onSelectTicker={handleSelectTicker}
           onOpenExplorer={handleOpenExplorer}
+          onOpenDailyBread={() => handleSelectView('daily-bread')}
           onTogglePin={handleTogglePin}
         />
+      ) : activeView === 'daily-bread' ? (
+        <main className="landing-main daily-bread-page-main">
+          <DailyBreadDesk
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            breakingNews={articles}
+            onSelectTicker={handleSelectTicker}
+          />
+        </main>
       ) : (
         <main className="terminal-main">
           {/* 1-Click War Room Switcher (Flagship + IPOs + User Pinned + Recent + Explorer Triggers) */}
@@ -468,14 +594,25 @@ export function App() {
               className="intelligence-column"
               aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
             >
-              {/* Panel A — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
+              {/* Panel A — Daily Bread Live AI Day-Trade Call */}
+              <DailyBreadTickerCard
+                meta={meta}
+                liveQuote={activeQuote}
+                breakingNews={articles}
+                onSelectPriceLevel={handleSelectPriceLevel}
+              />
+
+              {/* Panel B — Universal 7-Timeframe Technical Consensus Gauge */}
+              <TechnicalGaugePanel meta={meta} themeId={themeId} />
+
+              {/* Panel C — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
               <AiIntelligencePanel
                 meta={meta}
                 liveQuote={activeQuote}
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
 
-              {/* Panel B — Dynamic Valuation & Position P&L Calculator */}
+              {/* Panel D — Dynamic Valuation & Position P&L Calculator */}
               <ValuationCalculatorPanel
                 meta={meta}
                 livePrice={activeQuote?.price ?? null}
@@ -483,9 +620,6 @@ export function App() {
                 priceInput={calcPriceInput}
                 onPriceInputChange={handleCalcPriceChange}
               />
-
-              {/* Panel C — Universal 17-Indicator Technical Consensus Gauge */}
-              <TechnicalGaugePanel meta={meta} themeId={themeId} />
             </aside>
           </div>
         </main>

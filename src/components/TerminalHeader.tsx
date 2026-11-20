@@ -15,7 +15,7 @@ import type { DirectoryEntry } from '../lib/marketCatalog';
 import { THEMES, type ThemeId } from '../lib/themes';
 import type { ExplorerTab } from './MarketExplorerModal';
 
-export type AppView = 'home' | 'terminal';
+export type AppView = 'home' | 'daily-bread' | 'terminal';
 
 interface TerminalHeaderProps {
   activeView: AppView;
@@ -281,6 +281,16 @@ export function TerminalHeader({
             <span>MARKETS</span>
           </button>
           <button
+            id="nav-view-daily-bread"
+            type="button"
+            className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
+            aria-current={activeView === 'daily-bread' ? 'page' : undefined}
+            onClick={() => onSelectView('daily-bread')}
+          >
+            <Flame size={12} />
+            <span>DAILY BREAD</span>
+          </button>
+          <button
             id="nav-view-terminal"
             type="button"
             className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
@@ -288,7 +298,7 @@ export function TerminalHeader({
             onClick={() => onSelectView('terminal')}
           >
             <Activity size={12} />
-            <span>TERMINAL ({activeTicker})</span>
+            <span>{activeTicker}</span>
           </button>
         </nav>
 
@@ -436,7 +446,13 @@ export function TerminalHeader({
 
         <div className="header-controls">
           <div className="session-telemetry" aria-label="Eastern Time">
-            <span>{activeView === 'home' ? 'MARKETS' : `ROOM: ${activeTicker}`}</span>
+            <span>
+              {activeView === 'home'
+                ? 'MARKETS'
+                : activeView === 'daily-bread'
+                  ? 'DAILY BREAD'
+                  : `ROOM: ${activeTicker}`}
+            </span>
             <span className="session-divider" aria-hidden="true" />
             <span className="session-clock">{etClock} ET</span>
           </div>
@@ -480,9 +496,9 @@ export function TerminalHeader({
             <span>
               {copied
                 ? 'Copied'
-                : activeView === 'home'
-                  ? 'Share'
-                  : `Share ${activeTicker}`}
+                : activeView === 'terminal'
+                  ? `Share ${activeTicker}`
+                  : 'Share'}
             </span>
           </button>
         </div>

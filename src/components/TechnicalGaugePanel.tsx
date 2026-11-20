@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import type { TickerMeta } from '../data/tickers';
+import type { HlInterval } from '../lib/hyperliquidFeed';
 import {
   evaluateTechnicals,
   type TechnicalSummary,
@@ -8,7 +9,17 @@ import { THEME_MAP, type ThemeId } from '../lib/themes';
 import { fetchUniversalCandles } from '../lib/universalFeed';
 import { TradingViewEmbed } from './TradingViewEmbed';
 
-type TaInterval = '15m' | '1h';
+type TaInterval = HlInterval;
+
+const TA_TIMEFRAMES: Array<{ id: TaInterval; label: string; tvValue: string }> = [
+  { id: '1m', label: '1m', tvValue: '1m' },
+  { id: '5m', label: '5m', tvValue: '5m' },
+  { id: '15m', label: '15m', tvValue: '15m' },
+  { id: '30m', label: '30m', tvValue: '30m' },
+  { id: '1h', label: '1h', tvValue: '1h' },
+  { id: '4h', label: '4h', tvValue: '4h' },
+  { id: '1d', label: '1D', tvValue: '1D' },
+];
 
 const TV_TECHNICAL_SCRIPT =
   'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
@@ -81,10 +92,13 @@ function TechnicalGaugePanelComponent({
   const useTvFallback = isCurrent ? resultState.useTvFallback : false;
   const loading = meta.ipoStatus !== 'upcoming' && !isCurrent;
 
+  const activeTfMeta =
+    TA_TIMEFRAMES.find((tf) => tf.id === interval) ?? TA_TIMEFRAMES[2];
+
   const tvGaugeConfig = useMemo(
     () =>
       JSON.stringify({
-        interval,
+        interval: activeTfMeta.tvValue,
         width: '100%',
         isTransparent: true,
         height: 360,
@@ -94,7 +108,7 @@ function TechnicalGaugePanelComponent({
         locale: 'en',
         colorTheme: palette.tvTheme,
       }),
-    [interval, meta.tvSymbol, palette.tvTheme],
+    [activeTfMeta.tvValue, meta.tvSymbol, palette.tvTheme],
   );
 
   const needleDeg = summary
@@ -118,29 +132,28 @@ function TechnicalGaugePanelComponent({
           <h2 className="panel-title">TECHNICAL CONSENSUS</h2>
           <span className="panel-badge panel-badge--emerald">{meta.ticker}</span>
         </div>
+        <span className="panel-badge mono">{activeTfMeta.label}</span>
+      </div>
 
-        <div className="interval-tabs" role="tablist" aria-label="Technical gauge timeframe">
+      {/* Multi-Timeframe Selector Bar */}
+      <div
+        className="ta-timeframes-bar"
+        role="tablist"
+        aria-label="Technical consensus timeframes"
+      >
+        {TA_TIMEFRAMES.map((tf) => (
           <button
-            id="ta-interval-15m"
+            key={tf.id}
+            id={`ta-interval-${tf.id}`}
             type="button"
             role="tab"
-            aria-selected={interval === '15m'}
-            className={`interval-tab${interval === '15m' ? ' active' : ''}`}
-            onClick={() => setInterval('15m')}
+            aria-selected={interval === tf.id}
+            className={`ta-tf-btn mono${interval === tf.id ? ' active' : ''}`}
+            onClick={() => setInterval(tf.id)}
           >
-            15m
+            {tf.label}
           </button>
-          <button
-            id="ta-interval-1h"
-            type="button"
-            role="tab"
-            aria-selected={interval === '1h'}
-            className={`interval-tab${interval === '1h' ? ' active' : ''}`}
-            onClick={() => setInterval('1h')}
-          >
-            1h
-          </button>
-        </div>
+        ))}
       </div>
 
       <div className="ta-live-body">
