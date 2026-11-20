@@ -50,6 +50,11 @@ const ENTITY_TICKER_PATTERNS: Array<[RegExp, string]> = [
   [/\buber\b|\bUBER\b/i, 'UBER'],
   [/\bspotify\b|\bSPOT\b/i, 'SPOT'],
   [/\bcrowdstrike\b|\bCRWD\b/i, 'CRWD'],
+  [/\bboeing\b|\bBA\b/i, 'BA'],
+  [/\beli lilly\b|\bLLY\b/i, 'LLY'],
+  [/\bexxon\b|\bXOM\b/i, 'XOM'],
+  [/\bchevron\b|\bCVX\b/i, 'CVX'],
+  [/\bcostco\b|\bCOST\b/i, 'COST'],
   [/\bs&p 500\b|\bSPY\b/i, 'SPY'],
   [/\bnasdaq\b|\bQQQ\b/i, 'QQQ'],
   [/\bdow jones\b|\bdow\b|\bDIA\b/i, 'DIA'],
@@ -146,6 +151,19 @@ function stripHtml(raw: string): string {
     .trim();
 }
 
+function sanitizeImageUrl(raw?: string | null): string | undefined {
+  if (!raw) return undefined;
+  const trimmed = raw.trim();
+  if (!/^https:\/\//i.test(trimmed)) return undefined;
+  if (/pixel|1x1|spacer|icon|favicon|logo_small/i.test(trimmed)) return undefined;
+  return trimmed;
+}
+
+function extractImageFromHtml(html: string): string | undefined {
+  const match = html.match(/<img[^>]+src=["'](https:\/\/[^"']+)["']/i);
+  return sanitizeImageUrl(match?.[1]);
+}
+
 export function formatRelativeAge(unixMs: number): string {
   const diffSec = Math.max(0, Math.floor((Date.now() - unixMs) / 1000));
   if (diffSec < 60) return 'Just now';
@@ -154,9 +172,16 @@ export function formatRelativeAge(unixMs: number): string {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
+export const FALLBACK_EDITORIAL_IMAGES: Record<Exclude<NewsCategory, 'all'>, string> = {
+  ipos: './news/hero-ipo-floor.jpg',
+  stocks: './news/hero-ipo-floor.jpg',
+  'ai-tech': './news/story-ai-compute.jpg',
+  macro: './news/story-wallstreet-macro.jpg',
+};
+
 /**
- * Grounded current market news desk baseline so the landing page renders instantaneously
- * with real breaking coverage while live RSS feeds stream in and prepend fresh updates.
+ * Fallback market news baseline used immediately before live RSS feeds finish loading
+ * or when a corporate firewall blocks public RSS relays.
  */
 export function getInitialEditorialNews(): NewsArticle[] {
   const now = Date.now();
@@ -311,9 +336,19 @@ const LIVE_RSS_SOURCES: RssSource[] = [
     defaultCategory: 'stocks',
   },
   {
+    name: 'CNBC Investing',
+    url: 'https://www.cnbc.com/id/15839069/device/rss/rss.html',
+    defaultCategory: 'stocks',
+  },
+  {
     name: 'CNBC Tech',
     url: 'https://www.cnbc.com/id/19854910/device/rss/rss.html',
     defaultCategory: 'ai-tech',
+  },
+  {
+    name: 'MarketWatch',
+    url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
+    defaultCategory: 'stocks',
   },
   {
     name: 'Yahoo Finance',
@@ -328,8 +363,9 @@ interface Rss2JsonItem {
   link?: string;
   guid?: string;
   description?: string;
+  content?: string;
   thumbnail?: string;
-  enclosure?: { link?: string };
+  enclosure?: { link?: string; thumbnail?: string };
 }
 
 interface Rss2JsonPayload {
@@ -359,16 +395,18 @@ async function fetchRssViaRss2Json(
       const url = (item.link ?? '').trim();
       if (!title || !url) continue;
 
-      const summary = stripHtml(item.description ?? '').slice(0, 220);
+      const rawDesc = item.description ?? '';
+      const summary = stripHtml(rawDesc).slice(0, 220);
       const parsedTime = item.pubDate ? Date.parse(item.pubDate) : NaN;
       const publishedAt = Number.isFinite(parsedTime) ? parsedTime : Date.now();
       const tickers = extractTickersFromText(`${title} ${summary}`);
       const category = classifyCategory(title, summary) || src.defaultCategory;
-      const rawImg = item.thumbnail || item.enclosure?.link || '';
       const imageUrl =
-        rawImg && /^https:\/\//i.test(rawImg) && !rawImg.includes('pixel')
-          ? rawImg
-          : undefined;
+        sanitizeImageUrl(item.thumbnail) ??
+        sanitizeImageUrl(item.enclosure?.link) ??
+        sanitizeImageUrl(item.enclosure?.thumbnail) ??
+        extractImageFromHtml(rawDesc) ??
+        extractImageFromHtml(item.content ?? '');
 
       out.push({
         id: `live-${src.name}-${item.guid || url}`.slice(0, 120),
@@ -394,61 +432,93 @@ async function fetchRssViaRss2Json(
   }
 }
 
+const XML_PROXIES: Array<(rssUrl: string) => string> = [
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+];
+
+function extractXmlNodeImage(node: Element, rawDesc: string): string | undefined {
+  // Check <media:content url="...">, <media:thumbnail url="...">, <enclosure url="...">
+  const mediaNodes = node.getElementsByTagName('*');
+  for (let i = 0; i < mediaNodes.length; i++) {
+    const el = mediaNodes[i];
+    const tag = el.tagName.toLowerCase();
+    if (
+      tag.endsWith('content') ||
+      tag.endsWith('thumbnail') ||
+      tag === 'enclosure' ||
+      tag === 'image'
+    ) {
+      const candidate =
+        sanitizeImageUrl(el.getAttribute('url')) ??
+        sanitizeImageUrl(el.getAttribute('href')) ??
+        sanitizeImageUrl(el.textContent);
+      if (candidate) return candidate;
+    }
+  }
+  return extractImageFromHtml(rawDesc);
+}
+
 async function fetchRssViaXmlProxy(
   src: RssSource,
   signal?: AbortSignal,
 ): Promise<NewsArticle[]> {
-  const endpoint = `https://api.allorigins.win/raw?url=${encodeURIComponent(src.url)}`;
-  const timeoutCtrl = new AbortController();
-  const timer = window.setTimeout(() => timeoutCtrl.abort(), 5500);
-  const onAbort = () => timeoutCtrl.abort();
-  signal?.addEventListener('abort', onAbort, { once: true });
+  for (const buildProxy of XML_PROXIES) {
+    if (signal?.aborted) return [];
+    const endpoint = buildProxy(src.url);
+    const timeoutCtrl = new AbortController();
+    const timer = window.setTimeout(() => timeoutCtrl.abort(), 5500);
+    const onAbort = () => timeoutCtrl.abort();
+    signal?.addEventListener('abort', onAbort, { once: true });
 
-  try {
-    const res = await fetch(endpoint, { signal: timeoutCtrl.signal });
-    if (!res.ok) return [];
-    const xmlText = await res.text();
-    if (!xmlText || !xmlText.includes('<item')) return [];
+    try {
+      const res = await fetch(endpoint, { signal: timeoutCtrl.signal });
+      if (!res.ok) continue;
+      const xmlText = await res.text();
+      if (!xmlText || !xmlText.includes('<item')) continue;
 
-    const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-    const items = Array.from(doc.querySelectorAll('item')).slice(0, 10);
-    const out: NewsArticle[] = [];
+      const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+      const items = Array.from(doc.querySelectorAll('item')).slice(0, 10);
+      const out: NewsArticle[] = [];
 
-    for (const node of items) {
-      const title = stripHtml(node.querySelector('title')?.textContent ?? '');
-      const url = (node.querySelector('link')?.textContent ?? '').trim();
-      if (!title || !url) continue;
+      for (const node of items) {
+        const title = stripHtml(node.querySelector('title')?.textContent ?? '');
+        const url = (node.querySelector('link')?.textContent ?? '').trim();
+        if (!title || !url) continue;
 
-      const summary = stripHtml(
-        node.querySelector('description')?.textContent ?? '',
-      ).slice(0, 220);
-      const pubRaw = node.querySelector('pubDate')?.textContent ?? '';
-      const parsedTime = pubRaw ? Date.parse(pubRaw) : NaN;
-      const publishedAt = Number.isFinite(parsedTime) ? parsedTime : Date.now();
-      const tickers = extractTickersFromText(`${title} ${summary}`);
-      const category = classifyCategory(title, summary) || src.defaultCategory;
+        const rawDesc = node.querySelector('description')?.textContent ?? '';
+        const summary = stripHtml(rawDesc).slice(0, 220);
+        const pubRaw = node.querySelector('pubDate')?.textContent ?? '';
+        const parsedTime = pubRaw ? Date.parse(pubRaw) : NaN;
+        const publishedAt = Number.isFinite(parsedTime) ? parsedTime : Date.now();
+        const tickers = extractTickersFromText(`${title} ${summary}`);
+        const category = classifyCategory(title, summary) || src.defaultCategory;
+        const imageUrl = extractXmlNodeImage(node, rawDesc);
 
-      out.push({
-        id: `xml-${src.name}-${url}`.slice(0, 120),
-        title,
-        summary:
-          summary || `Live ${src.name} market headline — click to read full story.`,
-        url,
-        source: src.name,
-        publishedAt,
-        category,
-        tickers,
-        isBreaking: Date.now() - publishedAt < 3 * 3600_000,
-        isLiveFetched: true,
-      });
+        out.push({
+          id: `xml-${src.name}-${url}`.slice(0, 120),
+          title,
+          summary:
+            summary || `Live ${src.name} market headline — click to read full story.`,
+          url,
+          source: src.name,
+          publishedAt,
+          category,
+          tickers,
+          imageUrl,
+          isBreaking: Date.now() - publishedAt < 3 * 3600_000,
+          isLiveFetched: true,
+        });
+      }
+      if (out.length > 0) return out;
+    } catch {
+      // Try next proxy
+    } finally {
+      window.clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
     }
-    return out;
-  } catch {
-    return [];
-  } finally {
-    window.clearTimeout(timer);
-    signal?.removeEventListener('abort', onAbort);
   }
+  return [];
 }
 
 let cachedLiveNews: { articles: NewsArticle[]; fetchedAt: number; liveCount: number } | null =
@@ -456,8 +526,8 @@ let cachedLiveNews: { articles: NewsArticle[]; fetchedAt: number; liveCount: num
 const NEWS_CACHE_TTL_MS = 3 * 60_000;
 
 /**
- * Fetches live breaking stock market headlines from CNBC + Yahoo Finance RSS feeds,
- * merges & deduplicates them with the grounded editorial desk stories, and sorts newest first.
+ * Fetches live breaking stock market headlines from CNBC, MarketWatch, and Yahoo Finance RSS feeds,
+ * merges & deduplicates them with the fallback editorial desk, and sorts newest first.
  */
 export async function fetchBreakingMarketNews(
   forceRefresh = false,
@@ -503,14 +573,12 @@ export async function fetchBreakingMarketNews(
     combined.push(article);
   };
 
-  // Keep the 3 editorial hero/feature stories anchored with photography when live items lack imagery,
-  // while placing fresh live breaking RSS items right into the live news stream.
   const sortedLive = [...liveItems].sort((a, b) => b.publishedAt - a.publishedAt);
   for (const item of sortedLive) addUnique(item);
   for (const item of editorial) addUnique(item);
 
   const result = {
-    articles: combined.slice(0, 32),
+    articles: combined.slice(0, 36),
     liveCount: liveItems.length,
   };
 

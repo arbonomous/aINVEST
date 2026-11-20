@@ -16,6 +16,7 @@ import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
+  FALLBACK_EDITORIAL_IMAGES,
   fetchBreakingMarketNews,
   formatRelativeAge,
   getInitialEditorialNews,
@@ -206,31 +207,62 @@ export function LandingPage({
     };
   }, [applyNewsResult]);
 
-  // Anchor the top editorial hero + 2 photo feature stories cleanly
+  // Automatically promote the freshest live breaking news into Hero + 2 Feature slots
   const { heroStory, featurePair, streamStories, breakingLead } = useMemo(() => {
     const editorialFallback = getInitialEditorialNews();
-    const withHeroImg =
-      articles.find((a) => a.id === 'ed-ant-debut') ??
-      articles.find((a) => Boolean(a.imageUrl)) ??
-      editorialFallback[0];
+    const livePool = articles.filter((a) => a.isLiveFetched);
+    const fallbackPool = [
+      './news/hero-ipo-floor.jpg',
+      './news/story-ai-compute.jpg',
+      './news/story-wallstreet-macro.jpg',
+    ];
+    const usedFallbacks = new Set<string>();
 
-    const feature1 =
-      articles.find((a) => a.id === 'ed-ai-chips-rotation') ?? editorialFallback[1];
-    const feature2 =
-      articles.find((a) => a.id === 'ed-wallstreet-selloff') ?? editorialFallback[2];
+    const attachDistinctFallback = (story: NewsArticle): NewsArticle => {
+      if (story.imageUrl) return story;
+      const preferred = FALLBACK_EDITORIAL_IMAGES[story.category];
+      const chosen = !usedFallbacks.has(preferred)
+        ? preferred
+        : fallbackPool.find((img) => !usedFallbacks.has(img)) ?? preferred;
+      usedFallbacks.add(chosen);
+      return { ...story, imageUrl: chosen };
+    };
 
-    const topIds = new Set([withHeroImg.id, feature1.id, feature2.id]);
+    let selectedTop: NewsArticle[];
+    if (livePool.length >= 3) {
+      // Score live stories so stories with publisher photos and mentioned tickers rise to top 3
+      const scored = [...livePool].sort((a, b) => {
+        const scoreA =
+          (a.imageUrl ? 40 : 0) +
+          (a.tickers.length > 0 ? 25 : 0) +
+          (a.isBreaking ? 15 : 0);
+        const scoreB =
+          (b.imageUrl ? 40 : 0) +
+          (b.tickers.length > 0 ? 25 : 0) +
+          (b.isBreaking ? 15 : 0);
+        if (scoreB !== scoreA) return scoreB - scoreA;
+        return b.publishedAt - a.publishedAt;
+      });
+      selectedTop = scored.slice(0, 3).map(attachDistinctFallback);
+    } else if (livePool.length > 0) {
+      const combinedTop = [...livePool, ...editorialFallback].slice(0, 3);
+      selectedTop = combinedTop.map(attachDistinctFallback);
+    } else {
+      selectedTop = editorialFallback.slice(0, 3);
+    }
+
+    const [hero, feat1, feat2] = selectedTop;
+    const topIds = new Set(selectedTop.map((s) => s.id));
     const rest = articles.filter((a) => !topIds.has(a.id));
 
-    // Latest live breaking item (or hero story) for the top breaking dispatch bar
     const breaking =
-      articles.find((a) => a.isLiveFetched && a.isBreaking) ??
+      livePool[0] ??
       articles.find((a) => a.isBreaking) ??
-      withHeroImg;
+      hero;
 
     return {
-      heroStory: withHeroImg,
-      featurePair: [feature1, feature2],
+      heroStory: hero,
+      featurePair: [feat1, feat2],
       streamStories: rest,
       breakingLead: breaking,
     };
@@ -468,11 +500,20 @@ export function LandingPage({
             >
               <img
                 src={heroStory.imageUrl || './news/hero-ipo-floor.jpg'}
-                alt="Wall Street financial district at twilight"
+                alt={heroStory.title}
                 className="editorial-hero-img"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (!img.dataset.fallbackApplied) {
+                    img.dataset.fallbackApplied = '1';
+                    img.src = FALLBACK_EDITORIAL_IMAGES[heroStory.category];
+                  }
+                }}
               />
               <span className="editorial-media-kicker mono">
-                TOP STORY • {heroStory.source.toUpperCase()}
+                {heroStory.isLiveFetched ? 'LIVE' : 'TOP STORY'} •{' '}
+                {heroStory.source.toUpperCase()}
               </span>
             </a>
 
@@ -483,6 +524,9 @@ export function LandingPage({
                   •
                 </span>
                 <span>{formatRelativeAge(heroStory.publishedAt)}</span>
+                {heroStory.isLiveFetched && (
+                  <span className="news-live-tag">LIVE WIRE</span>
+                )}
               </div>
 
               <h1 className="editorial-hero-headline">
@@ -498,9 +542,11 @@ export function LandingPage({
               <p className="editorial-hero-deck">{heroStory.summary}</p>
 
               <div className="editorial-hero-footer">
-                <div className="news-tickers-row">
-                  {heroStory.tickers.map((t) => renderTickerChip(t))}
-                </div>
+                {heroStory.tickers.length > 0 && (
+                  <div className="news-tickers-row">
+                    {heroStory.tickers.map((t) => renderTickerChip(t))}
+                  </div>
+                )}
 
                 <div className="editorial-hero-actions">
                   <button
@@ -527,7 +573,7 @@ export function LandingPage({
 
           {/* 2-Up Secondary Editorial Feature Cards */}
           <div className="editorial-feature-duo">
-            {featurePair.map((story) => (
+            {featurePair.map((story, idx) => (
               <article key={story.id} className="editorial-feature-card">
                 <a
                   href={story.url}
@@ -536,9 +582,25 @@ export function LandingPage({
                   className="editorial-feature-media"
                 >
                   <img
-                    src={story.imageUrl}
-                    alt={story.source}
+                    src={
+                      story.imageUrl ||
+                      (idx === 0
+                        ? './news/story-ai-compute.jpg'
+                        : './news/story-wallstreet-macro.jpg')
+                    }
+                    alt={story.title}
                     className="editorial-feature-img"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (!img.dataset.fallbackApplied) {
+                        img.dataset.fallbackApplied = '1';
+                        img.src =
+                          idx === 0
+                            ? './news/story-ai-compute.jpg'
+                            : './news/story-wallstreet-macro.jpg';
+                      }
+                    }}
                   />
                 </a>
 
@@ -549,6 +611,9 @@ export function LandingPage({
                       •
                     </span>
                     <span>{formatRelativeAge(story.publishedAt)}</span>
+                    {story.isLiveFetched && (
+                      <span className="news-live-tag">LIVE</span>
+                    )}
                   </div>
 
                   <h2 className="editorial-feature-headline">
@@ -563,9 +628,11 @@ export function LandingPage({
 
                   <p className="editorial-feature-summary">{story.summary}</p>
 
-                  <div className="news-tickers-row">
-                    {story.tickers.slice(0, 3).map((t) => renderTickerChip(t))}
-                  </div>
+                  {story.tickers.length > 0 && (
+                    <div className="news-tickers-row">
+                      {story.tickers.slice(0, 3).map((t) => renderTickerChip(t))}
+                    </div>
+                  )}
                 </div>
               </article>
             ))}
@@ -671,6 +738,11 @@ export function LandingPage({
                             alt=""
                             className="news-stream-thumb"
                             loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) parent.style.display = 'none';
+                            }}
                           />
                         </a>
                       )}
