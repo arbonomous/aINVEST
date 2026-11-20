@@ -365,7 +365,7 @@ export function App() {
 
   const handleSelectView = useCallback((view: AppView) => {
     setActiveView(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
   const handleSelectTicker = useCallback(
@@ -377,7 +377,7 @@ export function App() {
         .replace(/^[A-Z0-9_-]+:/, '');
       if (!clean || !/^[A-Z0-9][A-Z0-9._-]{0,11}$/.test(clean)) return;
 
-      const switchingFromHome = activeView !== 'terminal';
+      const switchingFromOtherView = activeView !== 'terminal';
       setActiveView('terminal');
 
       if (clean !== activeTicker) {
@@ -388,12 +388,12 @@ export function App() {
           return next;
         });
         showToast(`Opened ${clean} War Room`);
-      } else if (switchingFromHome) {
+      } else if (switchingFromOtherView) {
         showToast(`Opened ${clean} War Room`);
       }
 
-      if (switchingFromHome) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (switchingFromOtherView) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
       }
     },
     [activeTicker, activeView, showToast],

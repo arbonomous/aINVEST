@@ -73,7 +73,7 @@ export function FloorChatPanel({
 }: FloorChatPanelProps) {
   const [identity] = useState(() => getOrCreateIdentity());
   const clientRef = useRef<WarRoomClient | null>(null);
-  const feedEndRef = useRef<HTMLDivElement | null>(null);
+  const feedContainerRef = useRef<HTMLDivElement | null>(null);
   const lastSendAtRef = useRef<number>(0);
 
   const [messages, setMessages] = useState<FloorMessage[]>(() =>
@@ -142,7 +142,9 @@ export function FloorChatPanel({
   }, [ticker, identity, handleIncomingMessage, handleIncomingVote]);
 
   useEffect(() => {
-    feedEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const el = feedContainerRef.current;
+    if (!el || messages.length === 0) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages.length, filter]);
 
   const filteredMessages = useMemo(() => {
@@ -372,7 +374,12 @@ export function FloorChatPanel({
       </div>
 
       {/* Message Feed */}
-      <div className="chat-feed" role="log" aria-live="polite">
+      <div
+        ref={feedContainerRef}
+        className="chat-feed"
+        role="log"
+        aria-live="polite"
+      >
         {filteredMessages.length === 0 ? (
           <div className="chat-empty-state">
             <p className="chat-empty-title">
@@ -400,7 +407,6 @@ export function FloorChatPanel({
             </div>
           ))
         )}
-        <div ref={feedEndRef} />
       </div>
 
       {/* Composer */}
