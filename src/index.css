@@ -7784,6 +7784,10 @@ body {
     padding: 12px;
   }
 
+  .whale-title-block {
+    flex: 0 0 auto;
+  }
+
   .whale-tide-strip {
     padding: 9px 12px;
   }
