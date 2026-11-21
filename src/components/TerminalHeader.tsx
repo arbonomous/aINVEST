@@ -321,148 +321,6 @@ export function TerminalHeader({
           </button>
         </nav>
 
-        {/* Universal Stock & IPO Search Bar (⌘K) + Explorer Trigger */}
-        <div className="header-discovery-group">
-          <div ref={searchWrapRef} className="ticker-search-wrap">
-            <Search size={13} className="ticker-search-icon" aria-hidden="true" />
-            <input
-              ref={inputRef}
-              id="ainvest-ticker-search"
-              type="text"
-              className="ticker-search-input mono"
-              placeholder={`Search ${totalMarketsLabel} (ANT, SPCX, JPM, DIS…)`}
-              value={query}
-              onFocus={() => setOpenSearch(true)}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpenSearch(true);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (searchResults.length > 0) {
-                    pickTicker(searchResults[0].ticker);
-                  } else if (VALID_TICKER_RE.test(cleanQuery)) {
-                    pickTicker(cleanQuery);
-                  }
-                }
-              }}
-              aria-label="Search all stocks and IPO tickers"
-            />
-            <span className="search-kbd mono" aria-hidden="true">
-              ⌘K
-            </span>
-
-            {openSearch && (
-              <div
-                className="search-dropdown"
-                role="listbox"
-                aria-label="Matching stocks and IPOs"
-              >
-                {canDirectLaunch && (
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected="false"
-                    className="search-option search-option--direct"
-                    onClick={() => pickTicker(cleanQuery)}
-                  >
-                    <div className="search-option-left">
-                      <span className="search-opt-ticker mono">{cleanQuery}</span>
-                      <span className="search-opt-name">
-                        Open {cleanQuery} War Room directly
-                      </span>
-                    </div>
-                    <span className="search-opt-launch mono">
-                      OPEN <ArrowRight size={11} />
-                    </span>
-                  </button>
-                )}
-
-                {searchResults.length === 0 && !canDirectLaunch ? (
-                  <div className="search-empty mono">
-                    Type any stock or IPO symbol (e.g. AAPL, SPCX, JPM, BRK.B)
-                  </div>
-                ) : (
-                  searchResults.map((item) => (
-                    <button
-                      key={item.ticker}
-                      type="button"
-                      role="option"
-                      aria-selected={activeTicker === item.ticker}
-                      className={`search-option${activeTicker === item.ticker ? ' active' : ''}`}
-                      onClick={() => pickTicker(item.ticker)}
-                    >
-                      <div className="search-option-left">
-                        <span className="search-opt-ticker mono">{item.ticker}</span>
-                        {item.isIpo && (
-                          <span className="search-micro-tag search-micro-tag--ipo mono">
-                            IPO
-                          </span>
-                        )}
-                        {item.isLive247 && (
-                          <span className="search-micro-tag search-micro-tag--live mono">
-                            24/7
-                          </span>
-                        )}
-                        <span className="search-opt-name">{item.name}</span>
-                      </div>
-                      <div className="search-option-right">
-                        <span className="search-opt-ex mono">{item.exchange}</span>
-                        <span className="search-opt-price mono">
-                          {item.price !== null ? `$${item.price.toFixed(2)}` : '—'}
-                        </span>
-                      </div>
-                    </button>
-                  ))
-                )}
-
-                <div className="search-dropdown-footer">
-                  <button
-                    type="button"
-                    className="search-browse-btn mono"
-                    onClick={() => {
-                      setOpenSearch(false);
-                      onOpenExplorer('ipos');
-                    }}
-                  >
-                    <Flame size={11} />
-                    <span>IPOs</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="search-browse-btn mono"
-                    onClick={() => {
-                      setOpenSearch(false);
-                      onOpenExplorer('all');
-                    }}
-                  >
-                    <Globe size={11} />
-                    <span>
-                      Browse all{' '}
-                      {directory.length > 0
-                        ? directory.length.toLocaleString()
-                        : '7,000+'}
-                      + markets →
-                    </span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            id="open-markets-explorer-btn"
-            type="button"
-            className="markets-explorer-btn mono"
-            onClick={() => onOpenExplorer('ipos')}
-            title="Browse all 7,290+ US stocks, ETFs, recent & upcoming IPOs, and 24/7 markets"
-          >
-            <Globe size={13} />
-            <span>ALL STOCKS &amp; IPOs</span>
-          </button>
-        </div>
-
         <div className="header-controls">
           <div className="session-telemetry" aria-label="Eastern Time">
             <span>
@@ -549,6 +407,152 @@ export function TerminalHeader({
                   : 'Share'}
             </span>
           </button>
+        </div>
+      </div>
+
+      {/* Dedicated Row 2: Universal Stock & IPO Search Bar (⌘K) + Explorer Trigger */}
+      <div className="header-search-row">
+        <div className="header-search-row-inner">
+          <div className="header-discovery-group">
+            <div ref={searchWrapRef} className="ticker-search-wrap">
+              <Search size={13} className="ticker-search-icon" aria-hidden="true" />
+              <input
+                ref={inputRef}
+                id="ainvest-ticker-search"
+                type="text"
+                className="ticker-search-input mono"
+                placeholder={`Search ${totalMarketsLabel} (ANT, SPCX, JPM, DIS…)`}
+                value={query}
+                onFocus={() => setOpenSearch(true)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setOpenSearch(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchResults.length > 0) {
+                      pickTicker(searchResults[0].ticker);
+                    } else if (VALID_TICKER_RE.test(cleanQuery)) {
+                      pickTicker(cleanQuery);
+                    }
+                  }
+                }}
+                aria-label="Search all stocks and IPO tickers"
+              />
+              <span className="search-kbd mono" aria-hidden="true">
+                ⌘K
+              </span>
+
+              {openSearch && (
+                <div
+                  className="search-dropdown"
+                  role="listbox"
+                  aria-label="Matching stocks and IPOs"
+                >
+                  {canDirectLaunch && (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      className="search-option search-option--direct"
+                      onClick={() => pickTicker(cleanQuery)}
+                    >
+                      <div className="search-option-left">
+                        <span className="search-opt-ticker mono">{cleanQuery}</span>
+                        <span className="search-opt-name">
+                          Open {cleanQuery} War Room directly
+                        </span>
+                      </div>
+                      <span className="search-opt-launch mono">
+                        OPEN <ArrowRight size={11} />
+                      </span>
+                    </button>
+                  )}
+
+                  {searchResults.length === 0 && !canDirectLaunch ? (
+                    <div className="search-empty mono">
+                      Type any stock or IPO symbol (e.g. AAPL, SPCX, JPM, BRK.B)
+                    </div>
+                  ) : (
+                    searchResults.map((item) => (
+                      <button
+                        key={item.ticker}
+                        type="button"
+                        role="option"
+                        aria-selected={activeTicker === item.ticker}
+                        className={`search-option${activeTicker === item.ticker ? ' active' : ''}`}
+                        onClick={() => pickTicker(item.ticker)}
+                      >
+                        <div className="search-option-left">
+                          <span className="search-opt-ticker mono">{item.ticker}</span>
+                          {item.isIpo && (
+                            <span className="search-micro-tag search-micro-tag--ipo mono">
+                              IPO
+                            </span>
+                          )}
+                          {item.isLive247 && (
+                            <span className="search-micro-tag search-micro-tag--live mono">
+                              24/7
+                            </span>
+                          )}
+                          <span className="search-opt-name">{item.name}</span>
+                        </div>
+                        <div className="search-option-right">
+                          <span className="search-opt-ex mono">{item.exchange}</span>
+                          <span className="search-opt-price mono">
+                            {item.price !== null ? `$${item.price.toFixed(2)}` : '—'}
+                          </span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+
+                  <div className="search-dropdown-footer">
+                    <button
+                      type="button"
+                      className="search-browse-btn mono"
+                      onClick={() => {
+                        setOpenSearch(false);
+                        onOpenExplorer('ipos');
+                      }}
+                    >
+                      <Flame size={11} />
+                      <span>IPOs</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="search-browse-btn mono"
+                      onClick={() => {
+                        setOpenSearch(false);
+                        onOpenExplorer('all');
+                      }}
+                    >
+                      <Globe size={11} />
+                      <span>
+                        Browse all{' '}
+                        {directory.length > 0
+                          ? directory.length.toLocaleString()
+                          : '7,000+'}
+                        + markets →
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              id="open-markets-explorer-btn"
+              type="button"
+              className="markets-explorer-btn mono"
+              onClick={() => onOpenExplorer('ipos')}
+              title="Browse all 7,290+ US stocks, ETFs, recent & upcoming IPOs, and 24/7 markets"
+            >
+              <Globe size={13} />
+              <span>ALL STOCKS &amp; IPOs</span>
+            </button>
+          </div>
         </div>
       </div>
     </header>
