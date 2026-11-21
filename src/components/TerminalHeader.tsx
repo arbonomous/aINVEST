@@ -253,73 +253,75 @@ export function TerminalHeader({
   return (
     <header className="terminal-header">
       <div className="terminal-header-inner">
-        <button
-          id="brand-home-btn"
-          type="button"
-          className="brand-home-btn"
-          onClick={() => onSelectView('home')}
-          title="Go to aINVEST Markets & Breaking News Front Page"
-        >
-          <div className="brand-mark" aria-hidden="true">
-            a<span className="text-emerald">I</span>
-          </div>
-          {activeView === 'terminal' ? (
-            <h1 className="brand-title">
-              <span>
-                a<span className="text-emerald">INVEST</span>
-              </span>
-            </h1>
-          ) : (
-            <span className="brand-title">
-              <span>
-                a<span className="text-emerald">INVEST</span>
-              </span>
-            </span>
-          )}
-        </button>
-
-        <nav className="primary-view-nav" aria-label="Primary sections">
+        <div className="header-left-group">
           <button
-            id="nav-view-home"
+            id="brand-home-btn"
             type="button"
-            className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
-            aria-current={activeView === 'home' ? 'page' : undefined}
+            className="brand-home-btn"
             onClick={() => onSelectView('home')}
+            title="Go to aINVEST Markets & Breaking News Front Page"
           >
-            <Newspaper size={12} />
-            <span>MARKETS</span>
+            <div className="brand-mark" aria-hidden="true">
+              a<span className="text-emerald">I</span>
+            </div>
+            {activeView === 'terminal' ? (
+              <h1 className="brand-title">
+                <span>
+                  a<span className="text-emerald">INVEST</span>
+                </span>
+              </h1>
+            ) : (
+              <span className="brand-title">
+                <span>
+                  a<span className="text-emerald">INVEST</span>
+                </span>
+              </span>
+            )}
           </button>
-          <button
-            id="nav-view-whale-flow"
-            type="button"
-            className={`view-nav-btn view-nav-btn--whale mono${activeView === 'whale-flow' ? ' active' : ''}`}
-            aria-current={activeView === 'whale-flow' ? 'page' : undefined}
-            onClick={() => onSelectView('whale-flow')}
-          >
-            <Waves size={12} />
-            <span>WHALE FLOW</span>
-          </button>
-          <button
-            id="nav-view-daily-bread"
-            type="button"
-            className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
-            aria-current={activeView === 'daily-bread' ? 'page' : undefined}
-            onClick={() => onSelectView('daily-bread')}
-          >
-            <Flame size={12} />
-            <span>DAILY BREAD</span>
-          </button>
-          <button
-            id="nav-view-terminal"
-            type="button"
-            className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
-            aria-current={activeView === 'terminal' ? 'page' : undefined}
-            onClick={() => onSelectView('terminal')}
-          >
-            <Activity size={12} />
-            <span>{activeTicker}</span>
-          </button>
-        </nav>
+
+          <nav className="primary-view-nav" aria-label="Primary sections">
+            <button
+              id="nav-view-home"
+              type="button"
+              className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
+              aria-current={activeView === 'home' ? 'page' : undefined}
+              onClick={() => onSelectView('home')}
+            >
+              <Newspaper size={12} />
+              <span>MARKETS</span>
+            </button>
+            <button
+              id="nav-view-whale-flow"
+              type="button"
+              className={`view-nav-btn view-nav-btn--whale mono${activeView === 'whale-flow' ? ' active' : ''}`}
+              aria-current={activeView === 'whale-flow' ? 'page' : undefined}
+              onClick={() => onSelectView('whale-flow')}
+            >
+              <Waves size={12} />
+              <span>WHALE FLOW</span>
+            </button>
+            <button
+              id="nav-view-daily-bread"
+              type="button"
+              className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
+              aria-current={activeView === 'daily-bread' ? 'page' : undefined}
+              onClick={() => onSelectView('daily-bread')}
+            >
+              <Flame size={12} />
+              <span>DAILY BREAD</span>
+            </button>
+            <button
+              id="nav-view-terminal"
+              type="button"
+              className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
+              aria-current={activeView === 'terminal' ? 'page' : undefined}
+              onClick={() => onSelectView('terminal')}
+            >
+              <Activity size={12} />
+              <span>{activeTicker}</span>
+            </button>
+          </nav>
+        </div>
 
         <div className="header-controls">
           <div className="session-telemetry" aria-label="Eastern Time">
@@ -552,6 +554,22 @@ export function TerminalHeader({
               <Globe size={13} />
               <span>ALL STOCKS &amp; IPOs</span>
             </button>
+          </div>
+
+          <div className="header-quick-jump mono" aria-label="Quick jump tickers">
+            <span className="header-qj-label">QUICK JUMP</span>
+            {(['ANT', 'NVDA', 'TSLA', 'SPCX', 'SPY', 'QQQ'] as const).map((sym) => (
+              <button
+                key={sym}
+                type="button"
+                className={`header-qj-pill${
+                  activeView === 'terminal' && activeTicker === sym ? ' active' : ''
+                }`}
+                onClick={() => pickTicker(sym)}
+              >
+                {sym}
+              </button>
+            ))}
           </div>
         </div>
       </div>
