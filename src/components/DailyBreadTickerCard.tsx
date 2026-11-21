@@ -1,5 +1,7 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BookmarkCheck,
+  BookmarkPlus,
   Crosshair,
   Flame,
   ShieldAlert,
@@ -14,11 +16,15 @@ import {
 import type { HlCandle } from '../lib/hyperliquidFeed';
 import type { NewsArticle } from '../lib/newsFeed';
 import { fetchUniversalCandles, type MarketQuote } from '../lib/universalFeed';
+import type { ChartTradePlan } from './RealtimeCandleChart';
 
 interface DailyBreadTickerCardProps {
   meta: TickerMeta;
   liveQuote: MarketQuote | null;
   breakingNews: NewsArticle[];
+  isTracked?: boolean;
+  onTrackCall?: (call: DailyBreadCall) => void;
+  onPlanUpdate?: (plan: ChartTradePlan | null) => void;
   onSelectPriceLevel: (price: number) => void;
 }
 
@@ -30,6 +36,9 @@ function DailyBreadTickerCardComponent({
   meta,
   liveQuote,
   breakingNews,
+  isTracked = false,
+  onTrackCall,
+  onPlanUpdate,
   onSelectPriceLevel,
 }: DailyBreadTickerCardProps) {
   const [dataState, setDataState] = useState<{
@@ -38,6 +47,12 @@ function DailyBreadTickerCardComponent({
     c15: HlCandle[];
     c60: HlCandle[];
   } | null>(null);
+  const lastPlanSigRef = useRef<string>('');
+  const onPlanUpdateRef = useRef(onPlanUpdate);
+
+  useEffect(() => {
+    onPlanUpdateRef.current = onPlanUpdate;
+  }, [onPlanUpdate]);
 
   const reqKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}`;
 
@@ -92,6 +107,27 @@ function DailyBreadTickerCardComponent({
       breakingNews,
     );
   }, [isCurrent, dataState, meta, liveQuote, breakingNews]);
+
+  useEffect(() => {
+    const sig = call
+      ? `${call.ticker}:${call.direction}:${call.entryLow}:${call.entryHigh}:${call.target1}:${call.target2}:${call.stopLoss}`
+      : `none:${meta.ticker}`;
+    if (sig === lastPlanSigRef.current) return;
+    lastPlanSigRef.current = sig;
+    if (!call) {
+      onPlanUpdateRef.current?.(null);
+      return;
+    }
+    onPlanUpdateRef.current?.({
+      ticker: call.ticker,
+      direction: call.direction,
+      entryLow: call.entryLow,
+      entryHigh: call.entryHigh,
+      target1: call.target1,
+      target2: call.target2,
+      stopLoss: call.stopLoss,
+    });
+  }, [call, meta.ticker]);
 
   const dirTone =
     call?.direction === 'LONG'
@@ -154,6 +190,22 @@ function DailyBreadTickerCardComponent({
               <span className="bread-setup-name mono">{call.setupName}</span>
               {call.direction !== 'WAIT' && (
                 <span className="bread-rr-chip mono">1 : {call.riskReward} R/R</span>
+              )}
+              {call.direction !== 'WAIT' && onTrackCall && (
+                <button
+                  type="button"
+                  className={`bread-track-btn mono${isTracked ? ' tracked' : ''}`}
+                  onClick={() => onTrackCall(call)}
+                  disabled={isTracked}
+                  title={
+                    isTracked
+                      ? 'Already tracked in Daily Bread Scorecard'
+                      : 'Track this call in your live Daily Bread Scorecard'
+                  }
+                >
+                  {isTracked ? <BookmarkCheck size={11} /> : <BookmarkPlus size={11} />}
+                  <span>{isTracked ? 'TRACKED' : 'TRACK CALL'}</span>
+                </button>
               )}
             </div>
 

@@ -29,19 +29,30 @@ interface TechnicalGaugePanelProps {
   themeId: ThemeId;
 }
 
+function shortVerdictCode(verdict: TechnicalSummary['verdict']): {
+  code: string;
+  tone: 'bull' | 'bear' | 'neutral';
+} {
+  if (verdict === 'STRONG BUY') return { code: 'SB', tone: 'bull' };
+  if (verdict === 'BUY') return { code: 'B', tone: 'bull' };
+  if (verdict === 'STRONG SELL') return { code: 'SS', tone: 'bear' };
+  if (verdict === 'SELL') return { code: 'S', tone: 'bear' };
+  return { code: 'N', tone: 'neutral' };
+}
+
 function TechnicalGaugePanelComponent({
   meta,
   themeId,
 }: TechnicalGaugePanelProps) {
   const [interval, setInterval] = useState<TaInterval>('15m');
-  const [resultState, setResultState] = useState<{
-    reqKey: string;
-    summary: TechnicalSummary | null;
-    useTvFallback: boolean;
+  const [matrixState, setMatrixState] = useState<{
+    tickerKey: string;
+    summaries: Partial<Record<TaInterval, TechnicalSummary | null>>;
+    loaded: Partial<Record<TaInterval, boolean>>;
   } | null>(null);
 
   const palette = THEME_MAP[themeId];
-  const reqKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}:${interval}`;
+  const tickerKey = `${meta.ticker}:${meta.hlCoin ?? 'mkt'}`;
 
   useEffect(() => {
     if (meta.ipoStatus === 'upcoming') return;
@@ -49,48 +60,84 @@ function TechnicalGaugePanelComponent({
     let cancelled = false;
     const controller = new AbortController();
 
-    const load = async () => {
-      try {
-        const res = await fetchUniversalCandles(
-          meta.ticker,
-          meta.hlCoin,
-          interval,
-          160,
-          controller.signal,
-        );
-        if (!cancelled) {
-          const evaluated = evaluateTechnicals(res.candles);
-          setResultState({
-            reqKey,
-            summary: evaluated,
-            useTvFallback: !evaluated,
-          });
-        }
-      } catch {
-        if (!cancelled) {
-          setResultState({
-            reqKey,
-            summary: null,
-            useTvFallback: true,
-          });
-        }
+    const loadAllTimeframes = async () => {
+      const settled = await Promise.allSettled(
+        TA_TIMEFRAMES.map(async (tf) => {
+          const res = await fetchUniversalCandles(
+            meta.ticker,
+            meta.hlCoin,
+            tf.id,
+            160,
+            controller.signal,
+          );
+          return { id: tf.id, summary: evaluateTechnicals(res.candles) };
+        }),
+      );
+      if (cancelled) return;
+
+      const summaries: Partial<Record<TaInterval, TechnicalSummary | null>> = {};
+      const loaded: Partial<Record<TaInterval, boolean>> = {};
+      for (let i = 0; i < TA_TIMEFRAMES.length; i++) {
+        const tfId = TA_TIMEFRAMES[i].id;
+        loaded[tfId] = true;
+        const r = settled[i];
+        summaries[tfId] = r.status === 'fulfilled' ? r.value.summary : null;
       }
+
+      setMatrixState({
+        tickerKey,
+        summaries,
+        loaded,
+      });
     };
 
-    void load();
-    const pollId = window.setInterval(() => void load(), 30_000);
+    void loadAllTimeframes();
+    const pollId = window.setInterval(() => void loadAllTimeframes(), 45_000);
 
     return () => {
       cancelled = true;
       controller.abort();
       window.clearInterval(pollId);
     };
-  }, [reqKey, meta.ticker, meta.hlCoin, meta.ipoStatus, interval]);
+  }, [tickerKey, meta.ticker, meta.hlCoin, meta.ipoStatus]);
 
-  const isCurrent = resultState?.reqKey === reqKey;
-  const summary = isCurrent ? resultState.summary : null;
-  const useTvFallback = isCurrent ? resultState.useTvFallback : false;
-  const loading = meta.ipoStatus !== 'upcoming' && !isCurrent;
+  const isCurrentTicker = matrixState?.tickerKey === tickerKey;
+  const activeLoaded = isCurrentTicker && Boolean(matrixState.loaded[interval]);
+  const summary = isCurrentTicker ? (matrixState.summaries[interval] ?? null) : null;
+  const useTvFallback = activeLoaded && !summary;
+  const loading = meta.ipoStatus !== 'upcoming' && !activeLoaded;
+
+  const confluence = useMemo(() => {
+    if (!isCurrentTicker) return null;
+    let bull = 0;
+    let bear = 0;
+    let neutral = 0;
+    let ready = 0;
+    for (const tf of TA_TIMEFRAMES) {
+      const s = matrixState.summaries[tf.id];
+      if (!s) continue;
+      ready += 1;
+      if (s.verdict === 'STRONG BUY' || s.verdict === 'BUY') bull += 1;
+      else if (s.verdict === 'STRONG SELL' || s.verdict === 'SELL') bear += 1;
+      else neutral += 1;
+    }
+    if (ready < 3) return null;
+
+    const alignedBull = bull >= Math.ceil(ready * 0.7);
+    const alignedBear = bear >= Math.ceil(ready * 0.7);
+    const tone: 'bull' | 'bear' | 'amber' = alignedBull
+      ? 'bull'
+      : alignedBear
+        ? 'bear'
+        : 'amber';
+    const headline = alignedBull
+      ? `ALL-TF ALIGNED BULL (${bull}/${ready})`
+      : alignedBear
+        ? `ALL-TF ALIGNED BEAR (${bear}/${ready})`
+        : `MULTI-TF MIXED (${bull}B / ${neutral}N / ${bear}S)`;
+
+    return { bull, bear, neutral, ready, tone, headline, aligned: alignedBull || alignedBear };
+  }, [isCurrentTicker, matrixState]);
 
   const activeTfMeta =
     TA_TIMEFRAMES.find((tf) => tf.id === interval) ?? TA_TIMEFRAMES[2];
@@ -135,31 +182,58 @@ function TechnicalGaugePanelComponent({
         <span className="panel-badge mono">{activeTfMeta.label}</span>
       </div>
 
-      {/* Multi-Timeframe Selector Bar */}
+      {/* Multi-Timeframe Confluence Selector Bar (1m -> 1D with live signal dots) */}
       <div
         className="ta-timeframes-bar"
         role="tablist"
         aria-label="Technical consensus timeframes"
       >
-        {TA_TIMEFRAMES.map((tf) => (
-          <button
-            key={tf.id}
-            id={`ta-interval-${tf.id}`}
-            type="button"
-            role="tab"
-            aria-selected={interval === tf.id}
-            className={`ta-tf-btn mono${interval === tf.id ? ' active' : ''}`}
-            onClick={() => setInterval(tf.id)}
-          >
-            {tf.label}
-          </button>
-        ))}
+        {TA_TIMEFRAMES.map((tf) => {
+          const tfSummary = isCurrentTicker ? matrixState.summaries[tf.id] : null;
+          const badge = tfSummary ? shortVerdictCode(tfSummary.verdict) : null;
+          return (
+            <button
+              key={tf.id}
+              id={`ta-interval-${tf.id}`}
+              type="button"
+              role="tab"
+              aria-selected={interval === tf.id}
+              className={`ta-tf-btn mono${interval === tf.id ? ' active' : ''}`}
+              onClick={() => setInterval(tf.id)}
+              title={
+                tfSummary
+                  ? `${tf.label}: ${tfSummary.verdict} (${tfSummary.buyCount}B / ${tfSummary.neutralCount}N / ${tfSummary.sellCount}S)`
+                  : `Switch to ${tf.label}`
+              }
+            >
+              <span className="ta-tf-lbl">{tf.label}</span>
+              <span
+                className={`ta-tf-sig${badge ? ` ta-tf-sig--${badge.tone}` : ''}`}
+              >
+                {badge ? badge.code : '·'}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {/* 7-Timeframe Confluence Strip */}
+      {confluence && (
+        <div
+          className={`ta-confluence-bar ta-confluence-bar--${confluence.tone} mono`}
+          aria-label={`7-timeframe alignment: ${confluence.headline}`}
+        >
+          <span className="ta-confluence-label">{confluence.headline}</span>
+          {confluence.aligned && (
+            <span className="ta-confluence-tag">HIGH CONVICTION</span>
+          )}
+        </div>
+      )}
 
       <div className="ta-live-body">
         {loading && !summary && !useTvFallback ? (
           <div className="ta-loading-state mono">
-            Computing {interval} oscillators &amp; MAs for {meta.ticker}…
+            Scanning all 7 timeframes (1m → 1D) for {meta.ticker}…
           </div>
         ) : meta.ipoStatus === 'upcoming' ? (
           <div className="ta-loading-state mono">

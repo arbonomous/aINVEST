@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
+  BookmarkCheck,
+  BookmarkPlus,
   Crosshair,
   Flame,
   RefreshCw,
@@ -9,6 +11,8 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
+  Trophy,
+  X,
 } from 'lucide-react';
 import { resolveTickerMeta } from '../data/tickers';
 import {
@@ -19,6 +23,11 @@ import {
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import type { NewsArticle } from '../lib/newsFeed';
+import {
+  computeScorecardStats,
+  evaluateTrackedTrade,
+  type TrackedTrade,
+} from '../lib/paperTrades';
 import {
   directoryEntryToQuote,
   fetchUniversalCandles,
@@ -49,7 +58,12 @@ interface DailyBreadDeskProps {
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
   breakingNews: NewsArticle[];
+  trackedTrades: TrackedTrade[];
   compact?: boolean;
+  onTrackCall: (call: DailyBreadCall) => void;
+  onCloseTrade: (id: string, livePrice?: number) => void;
+  onRemoveTrade: (id: string) => void;
+  onClearClosedTrades: () => void;
   onSelectTicker: (ticker: string) => void;
   onOpenFullDesk?: () => void;
 }
@@ -63,7 +77,12 @@ export function DailyBreadDesk({
   quoteMap,
   directoryMap,
   breakingNews,
+  trackedTrades,
   compact = false,
+  onTrackCall,
+  onCloseTrade,
+  onRemoveTrade,
+  onClearClosedTrades,
   onSelectTicker,
   onOpenFullDesk,
 }: DailyBreadDeskProps) {
@@ -262,6 +281,37 @@ export function DailyBreadDesk({
     return { longs, shorts, waits };
   }, [scanState, basket]);
 
+  const evaluatedTrades = useMemo(() => {
+    const callPx: Record<string, number> = {};
+    for (const c of [...customCalls, ...(scanState?.calls ?? [])]) {
+      if (c.livePrice > 0) callPx[c.ticker] = c.livePrice;
+    }
+    return trackedTrades.map((t) => {
+      const px =
+        ctxMap[t.ticker]?.markPx ??
+        quoteMap[t.ticker]?.price ??
+        callPx[t.ticker] ??
+        directoryMap[t.ticker]?.lastSale ??
+        null;
+      return evaluateTrackedTrade(t, px);
+    });
+  }, [trackedTrades, ctxMap, quoteMap, directoryMap, customCalls, scanState]);
+
+  const scorecardStats = useMemo(
+    () => computeScorecardStats(evaluatedTrades),
+    [evaluatedTrades],
+  );
+
+  const openTrackedKeys = useMemo(() => {
+    const set = new Set<string>();
+    for (const t of trackedTrades) {
+      if (t.status === 'OPEN' || t.status === 'TP1_HIT') {
+        set.add(`${t.ticker}:${t.direction}`);
+      }
+    }
+    return set;
+  }, [trackedTrades]);
+
   return (
     <section
       className={`daily-bread-section${compact ? ' daily-bread-section--compact' : ''}`}
@@ -385,6 +435,146 @@ export function DailyBreadDesk({
           </form>
         )}
       </div>
+
+      {/* Live Daily Bread Paper Trade Scorecard */}
+      {evaluatedTrades.length > 0 && (
+        <div className="bread-scorecard-panel" aria-label="Daily Bread Live Paper Trade Scorecard">
+          <div className="bread-scorecard-head mono">
+            <div className="bread-scorecard-title-group">
+              <Trophy size={12} className="text-amber" />
+              <span className="bread-scorecard-title">PAPER TRADE SCORECARD</span>
+              <span className="bread-scorecard-stat">
+                OPEN <strong>{scorecardStats.openCount}</strong>
+              </span>
+              <span className="bread-scorecard-stat">
+                W/L{' '}
+                <strong>
+                  <span className="text-emerald">{scorecardStats.wins}W</span>/
+                  <span className="text-crimson">{scorecardStats.losses}L</span>
+                </strong>
+              </span>
+              {scorecardStats.winRatePct !== null && (
+                <span className="bread-scorecard-stat">
+                  WIN RATE{' '}
+                  <strong
+                    className={
+                      scorecardStats.winRatePct >= 50 ? 'text-emerald' : 'text-crimson'
+                    }
+                  >
+                    {scorecardStats.winRatePct}%
+                  </strong>
+                </span>
+              )}
+              <span className="bread-scorecard-stat">
+                AVG P&amp;L{' '}
+                <strong
+                  className={
+                    scorecardStats.avgPnlPct >= 0 ? 'text-emerald' : 'text-crimson'
+                  }
+                >
+                  {scorecardStats.avgPnlPct >= 0 ? '+' : ''}
+                  {scorecardStats.avgPnlPct.toFixed(2)}%
+                </strong>
+              </span>
+            </div>
+
+            {scorecardStats.total > scorecardStats.openCount && (
+              <button
+                type="button"
+                className="bread-scorecard-clear-btn mono"
+                onClick={onClearClosedTrades}
+              >
+                CLEAR CLOSED
+              </button>
+            )}
+          </div>
+
+          <div className="bread-scorecard-list mono">
+            {(compact ? evaluatedTrades.slice(0, 3) : evaluatedTrades.slice(0, 12)).map(
+              ({ trade, markPrice, pnlPct, rMultiple, isWin }) => {
+                const isActive =
+                  trade.status === 'OPEN' || trade.status === 'TP1_HIT';
+                const statusTone =
+                  trade.status === 'TP1_HIT' || trade.status === 'TP2_HIT'
+                    ? 'bull'
+                    : trade.status === 'STOPPED'
+                      ? 'bear'
+                      : trade.status === 'CLOSED'
+                        ? isWin
+                          ? 'bull'
+                          : 'bear'
+                        : 'amber';
+                const statusLabel =
+                  trade.status === 'TP1_HIT'
+                    ? 'TP1 HIT'
+                    : trade.status === 'TP2_HIT'
+                      ? 'TP2 HIT'
+                      : trade.status;
+
+                return (
+                  <div key={trade.id} className="bread-scorecard-row">
+                    <div className="bread-sc-left">
+                      <span
+                        className={`bread-dir-pill bread-dir-pill--${
+                          trade.direction === 'LONG' ? 'bull' : 'bear'
+                        }`}
+                      >
+                        {trade.direction}
+                      </span>
+                      <button
+                        type="button"
+                        className="bread-sc-ticker"
+                        onClick={() => onSelectTicker(trade.ticker)}
+                      >
+                        {trade.ticker}
+                      </button>
+                      <span className="bread-sc-px">
+                        {fmtPx(trade.entryPrice)} → {fmtPx(markPrice)}
+                      </span>
+                    </div>
+
+                    <div className="bread-sc-right">
+                      <span
+                        className={`bread-sc-pnl ${
+                          pnlPct >= 0 ? 'text-emerald' : 'text-crimson'
+                        }`}
+                      >
+                        {pnlPct >= 0 ? '+' : ''}
+                        {pnlPct.toFixed(2)}% ({rMultiple >= 0 ? '+' : ''}
+                        {rMultiple.toFixed(1)}R)
+                      </span>
+                      <span
+                        className={`bread-sc-status bread-sc-status--${statusTone}`}
+                      >
+                        {statusLabel}
+                      </span>
+                      {isActive && (
+                        <button
+                          type="button"
+                          className="bread-sc-close-btn"
+                          onClick={() => onCloseTrade(trade.id, markPrice)}
+                          title="Lock in P&L at current price"
+                        >
+                          CLOSE
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="bread-sc-del-btn"
+                        onClick={() => onRemoveTrade(trade.id)}
+                        title="Remove from scorecard"
+                        aria-label={`Remove ${trade.ticker} tracked trade`}
+                      >
+                        <X size={11} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Calls Grid */}
       {isLoadingBasket && combinedCalls.length === 0 ? (
@@ -528,14 +718,45 @@ export function DailyBreadDesk({
                     <span>{call.invalidationNote}</span>
                   </span>
 
-                  <button
-                    type="button"
-                    className="bread-launch-btn mono"
-                    onClick={() => onSelectTicker(call.ticker)}
-                  >
-                    <span>CHART</span>
-                    <ArrowRight size={11} />
-                  </button>
+                  <div className="bread-footer-actions">
+                    {call.direction !== 'WAIT' && (
+                      <button
+                        type="button"
+                        className={`bread-track-btn mono${
+                          openTrackedKeys.has(`${call.ticker}:${call.direction}`)
+                            ? ' tracked'
+                            : ''
+                        }`}
+                        onClick={() => onTrackCall(call)}
+                        disabled={openTrackedKeys.has(`${call.ticker}:${call.direction}`)}
+                        title={
+                          openTrackedKeys.has(`${call.ticker}:${call.direction}`)
+                            ? 'Already tracked in live Paper Trade Scorecard'
+                            : 'Paper-track this AI setup in your live Scorecard'
+                        }
+                      >
+                        {openTrackedKeys.has(`${call.ticker}:${call.direction}`) ? (
+                          <BookmarkCheck size={11} />
+                        ) : (
+                          <BookmarkPlus size={11} />
+                        )}
+                        <span>
+                          {openTrackedKeys.has(`${call.ticker}:${call.direction}`)
+                            ? 'TRACKED'
+                            : 'TRACK'}
+                        </span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="bread-launch-btn mono"
+                      onClick={() => onSelectTicker(call.ticker)}
+                    >
+                      <span>CHART</span>
+                      <ArrowRight size={11} />
+                    </button>
+                  </div>
                 </div>
               </article>
             );

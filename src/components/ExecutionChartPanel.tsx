@@ -1,9 +1,13 @@
 import { memo, useMemo, useState } from 'react';
-import { ExternalLink, Maximize2, Minimize2, Zap } from 'lucide-react';
+import { ExternalLink, Maximize2, Minimize2, Sparkles, Zap } from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
+import { formatRelativeAge, type NewsArticle } from '../lib/newsFeed';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
-import { RealtimeCandleChart } from './RealtimeCandleChart';
+import {
+  RealtimeCandleChart,
+  type ChartTradePlan,
+} from './RealtimeCandleChart';
 import { TradingViewEmbed } from './TradingViewEmbed';
 
 const ADVANCED_CHART_SCRIPT =
@@ -15,6 +19,8 @@ interface ExecutionChartPanelProps {
   meta: TickerMeta;
   prevDayPx: number | null;
   themeId: ThemeId;
+  tradePlan?: ChartTradePlan | null;
+  movingNews?: NewsArticle | null;
   onQuoteDiscovered?: (quote: MarketQuote) => void;
 }
 
@@ -22,6 +28,8 @@ function ExecutionChartPanelComponent({
   meta,
   prevDayPx,
   themeId,
+  tradePlan,
+  movingNews,
   onQuoteDiscovered,
 }: ExecutionChartPanelProps) {
   const [modeState, setModeState] = useState<{
@@ -68,6 +76,12 @@ function ExecutionChartPanelComponent({
 
   const externalChartUrl = `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(meta.tvSymbol)}`;
   const liveVenueBadge = meta.hlCoin ?? meta.tvSymbol;
+  const movingTone =
+    movingNews?.sentiment === 'bull'
+      ? 'bull'
+      : movingNews?.sentiment === 'bear'
+        ? 'bear'
+        : 'amber';
 
   return (
     <section
@@ -135,12 +149,41 @@ function ExecutionChartPanelComponent({
         </div>
       </div>
 
+      {/* Why It's Moving — Live Ticker Catalyst Strip */}
+      {movingNews && (
+        <div className="why-moving-strip">
+          <span className={`why-moving-badge why-moving-badge--${movingTone} mono`}>
+            <Sparkles size={10} />
+            <span>
+              WHY {meta.ticker} IS MOVING
+              {movingNews.sentiment === 'bull'
+                ? ' • BULLISH'
+                : movingNews.sentiment === 'bear'
+                  ? ' • BEARISH'
+                  : ''}
+            </span>
+          </span>
+          <a
+            href={movingNews.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="why-moving-headline"
+          >
+            {movingNews.title}
+          </a>
+          <span className="why-moving-meta mono">
+            {movingNews.source} • {formatRelativeAge(movingNews.publishedAt)}
+          </span>
+        </div>
+      )}
+
       {feedMode === 'realtime' ? (
         <RealtimeCandleChart
           meta={meta}
           prevDayPx={prevDayPx}
           expanded={expanded}
           themeId={themeId}
+          tradePlan={tradePlan}
           onQuoteDiscovered={onQuoteDiscovered}
           onFallbackToTradingView={() => setFeedMode('tradingview')}
         />
@@ -162,8 +205,8 @@ function ExecutionChartPanelComponent({
         <span>
           {feedMode === 'realtime'
             ? meta.hlCoin
-              ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • RSI • VOL'
-              : 'LIVE EXCHANGE FEED • VWAP • EMA 9/21 • RSI • VOL'
+              ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • AI PLAN'
+              : 'LIVE EXCHANGE FEED • VWAP • EMA 9/21 • AI PLAN'
             : 'TRADINGVIEW INTERACTIVE CHART • FULL DRAWING TOOLS'}
         </span>
       </div>

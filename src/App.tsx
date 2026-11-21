@@ -11,6 +11,7 @@ import {
   MarketExplorerModal,
   type ExplorerTab,
 } from './components/MarketExplorerModal';
+import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
 import { TechnicalGaugePanel } from './components/TechnicalGaugePanel';
@@ -18,6 +19,7 @@ import { TerminalFooter } from './components/TerminalFooter';
 import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
 import { resolveTickerMeta } from './data/tickers';
+import type { DailyBreadCall } from './lib/dailyBreadEngine';
 import {
   fetchAllHyperliquidHip3CtxMap,
   type HlAssetCtx,
@@ -32,6 +34,13 @@ import {
   getInitialEditorialNews,
   type NewsArticle,
 } from './lib/newsFeed';
+import {
+  createTrackedTradeFromCall,
+  loadTrackedTrades,
+  reconcileTradesWithPrices,
+  saveTrackedTrades,
+  type TrackedTrade,
+} from './lib/paperTrades';
 import {
   THEME_MAP,
   applyTheme,
@@ -125,6 +134,12 @@ export function App() {
   const [liveNewsCount, setLiveNewsCount] = useState<number>(0);
   const [lastNewsUpdated, setLastNewsUpdated] = useState<string>('Just now');
   const [refreshingNews, setRefreshingNews] = useState<boolean>(false);
+  const [trackedTrades, setTrackedTrades] = useState<TrackedTrade[]>(() =>
+    loadTrackedTrades(),
+  );
+  const [activeTradePlan, setActiveTradePlan] = useState<ChartTradePlan | null>(
+    null,
+  );
 
   const directoryMap = useMemo<Record<string, DirectoryEntry>>(() => {
     const map: Record<string, DirectoryEntry> = {};
@@ -329,6 +344,16 @@ export function App() {
           }
           return changed ? { ...prev, ...next } : prev;
         });
+
+        const pxMap: Record<string, number> = {};
+        for (const [k, v] of Object.entries(next)) {
+          if (v.markPx > 0) pxMap[k] = v.markPx;
+        }
+        setTrackedTrades((prev) => {
+          const { trades, changed } = reconcileTradesWithPrices(prev, pxMap);
+          if (changed) saveTrackedTrades(trades);
+          return changed ? trades : prev;
+        });
       } catch {
         // Keep last good map
       }
@@ -426,6 +451,15 @@ export function App() {
 
   const handleLiveHlUpdate = useCallback((next: HlAssetCtx) => {
     setCtxMap((prev) => ({ ...prev, [next.ticker]: next }));
+    if (next.markPx > 0) {
+      setTrackedTrades((prev) => {
+        const { trades, changed } = reconcileTradesWithPrices(prev, {
+          [next.ticker]: next.markPx,
+        });
+        if (changed) saveTrackedTrades(trades);
+        return changed ? trades : prev;
+      });
+    }
   }, []);
 
   const handleLiveQuoteUpdate = useCallback((next: MarketQuote) => {
@@ -443,7 +477,78 @@ export function App() {
       }
       return { ...prev, [next.ticker]: next };
     });
+    const livePx = next.price;
+    if (livePx !== null && livePx > 0) {
+      setTrackedTrades((prev) => {
+        const { trades, changed } = reconcileTradesWithPrices(prev, {
+          [next.ticker]: livePx,
+        });
+        if (changed) saveTrackedTrades(trades);
+        return changed ? trades : prev;
+      });
+    }
   }, []);
+
+  const handleTrackCall = useCallback(
+    (call: DailyBreadCall) => {
+      const created = createTrackedTradeFromCall(call);
+      if (!created) return;
+      setTrackedTrades((prev) => {
+        const duplicate = prev.some(
+          (t) =>
+            t.ticker === created.ticker &&
+            t.direction === created.direction &&
+            (t.status === 'OPEN' || t.status === 'TP1_HIT'),
+        );
+        if (duplicate) return prev;
+        const next = [created, ...prev].slice(0, 40);
+        saveTrackedTrades(next);
+        return next;
+      });
+      showToast(
+        `Tracking ${created.direction} ${created.ticker} @ $${created.entryPrice.toFixed(2)} in Scorecard`,
+      );
+    },
+    [showToast],
+  );
+
+  const handleCloseTrade = useCallback(
+    (id: string, livePrice?: number) => {
+      setTrackedTrades((prev) => {
+        const next = prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                status: 'CLOSED' as const,
+                exitPrice: livePrice && livePrice > 0 ? livePrice : t.entryPrice,
+                closedAt: Date.now(),
+              }
+            : t,
+        );
+        saveTrackedTrades(next);
+        return next;
+      });
+      showToast('Closed tracked setup in Scorecard');
+    },
+    [showToast],
+  );
+
+  const handleRemoveTrade = useCallback((id: string) => {
+    setTrackedTrades((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      saveTrackedTrades(next);
+      return next;
+    });
+  }, []);
+
+  const handleClearClosedTrades = useCallback(() => {
+    setTrackedTrades((prev) => {
+      const next = prev.filter((t) => t.status === 'OPEN' || t.status === 'TP1_HIT');
+      saveTrackedTrades(next);
+      return next;
+    });
+    showToast('Cleared closed scorecard trades');
+  }, [showToast]);
 
   const handleSelectTheme = useCallback(
     (next: ThemeId) => {
@@ -492,6 +597,21 @@ export function App() {
 
   const isPinned = pinnedTickers.includes(meta.ticker);
 
+  const activeMovingNews = useMemo(
+    () => articles.find((a) => a.tickers.includes(meta.ticker)) ?? null,
+    [articles, meta.ticker],
+  );
+
+  const isActiveCallTracked = useMemo(() => {
+    if (!activeTradePlan || activeTradePlan.ticker !== meta.ticker) return false;
+    return trackedTrades.some(
+      (t) =>
+        t.ticker === meta.ticker &&
+        t.direction === activeTradePlan.direction &&
+        (t.status === 'OPEN' || t.status === 'TP1_HIT'),
+    );
+  }, [trackedTrades, activeTradePlan, meta.ticker]);
+
   return (
     <div className="war-room-shell">
       {/* Top Scrolling Ticker Tape (Flagship Stocks + Hot 2025-2026 IPOs + Indices) */}
@@ -531,7 +651,12 @@ export function App() {
           liveNewsCount={liveNewsCount}
           lastNewsUpdated={lastNewsUpdated}
           refreshingNews={refreshingNews}
+          trackedTrades={trackedTrades}
           onRefreshNews={() => void handleRefreshNews()}
+          onTrackCall={handleTrackCall}
+          onCloseTrade={handleCloseTrade}
+          onRemoveTrade={handleRemoveTrade}
+          onClearClosedTrades={handleClearClosedTrades}
           onSelectTicker={handleSelectTicker}
           onOpenExplorer={handleOpenExplorer}
           onOpenDailyBread={() => handleSelectView('daily-bread')}
@@ -544,6 +669,11 @@ export function App() {
             quoteMap={quoteMap}
             directoryMap={directoryMap}
             breakingNews={articles}
+            trackedTrades={trackedTrades}
+            onTrackCall={handleTrackCall}
+            onCloseTrade={handleCloseTrade}
+            onRemoveTrade={handleRemoveTrade}
+            onClearClosedTrades={handleClearClosedTrades}
             onSelectTicker={handleSelectTicker}
           />
         </main>
@@ -580,6 +710,8 @@ export function App() {
                 meta={meta}
                 prevDayPx={activeQuote?.prevClose ?? null}
                 themeId={themeId}
+                tradePlan={activeTradePlan}
+                movingNews={activeMovingNews}
                 onQuoteDiscovered={handleLiveQuoteUpdate}
               />
               <FloorChatPanel
@@ -599,10 +731,13 @@ export function App() {
                 meta={meta}
                 liveQuote={activeQuote}
                 breakingNews={articles}
+                isTracked={isActiveCallTracked}
+                onTrackCall={handleTrackCall}
+                onPlanUpdate={setActiveTradePlan}
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
 
-              {/* Panel B — Universal 7-Timeframe Technical Consensus Gauge */}
+              {/* Panel B — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
               <TechnicalGaugePanel meta={meta} themeId={themeId} />
 
               {/* Panel C — Real-Time aINVEST AI Signal Brief & IPO Tracker */}

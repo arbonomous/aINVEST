@@ -8,6 +8,7 @@ import {
   LineStyle,
   createChart,
   type IChartApi,
+  type IPriceLine,
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts';
@@ -27,11 +28,22 @@ import {
   type MarketQuote,
 } from '../lib/universalFeed';
 
+export interface ChartTradePlan {
+  ticker: string;
+  direction: 'LONG' | 'SHORT' | 'WAIT';
+  entryLow: number;
+  entryHigh: number;
+  target1: number;
+  target2: number;
+  stopLoss: number;
+}
+
 interface RealtimeCandleChartProps {
   meta: TickerMeta;
   prevDayPx: number | null;
   expanded: boolean;
   themeId: ThemeId;
+  tradePlan?: ChartTradePlan | null;
   onQuoteDiscovered?: (quote: MarketQuote) => void;
   onFallbackToTradingView: () => void;
 }
@@ -64,6 +76,7 @@ function RealtimeCandleChartComponent({
   prevDayPx,
   expanded,
   themeId,
+  tradePlan,
   onQuoteDiscovered,
   onFallbackToTradingView,
 }: RealtimeCandleChartProps) {
@@ -72,6 +85,7 @@ function RealtimeCandleChartComponent({
   const [interval, setInterval] = useState<HlInterval>('5m');
   const [showVwap, setShowVwap] = useState(true);
   const [showEma, setShowEma] = useState(true);
+  const [showAiPlan, setShowAiPlan] = useState(true);
   const [feedSource, setFeedSource] = useState<FeedSource>('none');
   const [wsLive, setWsLive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -84,6 +98,7 @@ function RealtimeCandleChartComponent({
   const vwapSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const ema9SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const ema21SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const aiPriceLinesRef = useRef<IPriceLine[]>([]);
   const showVwapRef = useRef(showVwap);
   const showEmaRef = useRef(showEma);
   const paletteRef = useRef(THEME_MAP[themeId]);
@@ -502,9 +517,82 @@ function RealtimeCandleChartComponent({
       vwapSeriesRef.current = null;
       ema9SeriesRef.current = null;
       ema21SeriesRef.current = null;
+      aiPriceLinesRef.current = [];
       chart.remove();
     };
   }, [meta.ticker, meta.hlCoin, meta.ipoStatus, interval]);
+
+  // Overlay Daily Bread AI Trade Plan (Entry, TP1, TP2, Stop Loss) without remounting chart
+  const activePlan =
+    tradePlan && tradePlan.ticker === meta.ticker ? tradePlan : null;
+  const planSig = activePlan
+    ? `${activePlan.ticker}:${activePlan.direction}:${activePlan.entryLow}:${activePlan.entryHigh}:${activePlan.target1}:${activePlan.target2}:${activePlan.stopLoss}`
+    : '';
+
+  useEffect(() => {
+    const series = candleSeriesRef.current;
+    if (!series) return;
+
+    for (const line of aiPriceLinesRef.current) {
+      try {
+        series.removePriceLine(line);
+      } catch {
+        // Ignore stale line
+      }
+    }
+    aiPriceLinesRef.current = [];
+
+    if (!showAiPlan || !activePlan || loading) return;
+
+    const p = THEME_MAP[themeId];
+    const entryMid = Number(((activePlan.entryLow + activePlan.entryHigh) / 2).toFixed(3));
+    const isWait = activePlan.direction === 'WAIT';
+
+    const specs: Array<{
+      price: number;
+      color: string;
+      lineStyle: LineStyle;
+      title: string;
+    }> = [
+      {
+        price: entryMid,
+        color: p.amber,
+        lineStyle: LineStyle.Dotted,
+        title: isWait ? 'AI PIVOT' : `AI ${activePlan.direction} ENTRY`,
+      },
+      {
+        price: activePlan.target1,
+        color: p.bull,
+        lineStyle: LineStyle.Dashed,
+        title: isWait ? 'AI BREAKOUT' : 'AI TP1',
+      },
+      {
+        price: activePlan.target2,
+        color: p.bull,
+        lineStyle: LineStyle.SparseDotted,
+        title: isWait ? 'AI EXT' : 'AI TP2',
+      },
+      {
+        price: activePlan.stopLoss,
+        color: p.bear,
+        lineStyle: LineStyle.Dashed,
+        title: isWait ? 'AI BREAKDOWN' : 'AI STOP',
+      },
+    ];
+
+    aiPriceLinesRef.current = specs
+      .filter((s) => Number.isFinite(s.price) && s.price > 0)
+      .map((s) =>
+        series.createPriceLine({
+          price: s.price,
+          color: s.color,
+          lineWidth: 1,
+          lineStyle: s.lineStyle,
+          axisLabelVisible: true,
+          title: s.title,
+        }),
+      );
+  }, [showAiPlan, planSig, activePlan, themeId, loading]);
 
   const isUp = readout ? readout.close >= readout.open : true;
 
@@ -541,6 +629,24 @@ function RealtimeCandleChartComponent({
           >
             EMA 9/21
           </button>
+          {activePlan && (
+            <button
+              type="button"
+              className={`rt-overlay-pill${
+                showAiPlan
+                  ? activePlan.direction === 'SHORT'
+                    ? ' rt-overlay-pill--crimson'
+                    : activePlan.direction === 'LONG'
+                      ? ' rt-overlay-pill--emerald'
+                      : ' rt-overlay-pill--amber'
+                  : ''
+              }`}
+              onClick={() => setShowAiPlan((v) => !v)}
+              title="Toggle Daily Bread AI Entry / TP1 / TP2 / Stop levels on chart"
+            >
+              AI PLAN
+            </button>
+          )}
 
           <span className={`rt-ws-pill mono${wsLive ? ' rt-ws-pill--live' : ''}`}>
             {wsLive

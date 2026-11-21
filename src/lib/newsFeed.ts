@@ -1,4 +1,5 @@
 export type NewsCategory = 'all' | 'stocks' | 'ipos' | 'ai-tech' | 'macro';
+export type NewsSentiment = 'bull' | 'bear' | 'neutral';
 
 export interface NewsArticle {
   id: string;
@@ -10,6 +11,7 @@ export interface NewsArticle {
   category: Exclude<NewsCategory, 'all'>;
   tickers: string[];
   imageUrl?: string;
+  sentiment?: NewsSentiment;
   isBreaking?: boolean;
   isLiveFetched?: boolean;
 }
@@ -140,6 +142,41 @@ function classifyCategory(title: string, summary: string): Exclude<NewsCategory,
   return 'stocks';
 }
 
+const BULL_HEADLINE_RE =
+  /\b(surge[sd]?|soar[sd]?|rally|rallies|rallied|jump[sd]?|climb[sd]?|beat[s]?|top[s]? estimates|upgrade[sd]?|outperform|record high|breakout|raises? guidance|strong demand|rebound[sd]?|gains? \d|up \d|bullish|approval|approved|partnership|buyback)\b/gi;
+
+const BEAR_HEADLINE_RE =
+  /\b(plunge[sd]?|tumble[sd]?|drop[sp]?|slide[sd]?|slump[sd]?|sink[s]?|selloff|sell-off|miss(?:es|ed)?|downgrade[sd]?|underperform|cuts? guidance|layoff[s]?|probe|investigation|lawsuit|antitrust|tariff[s]?|export (?:ban|curb|rule)|down \d|falls? \d|bearish|warning|weak demand|recession|default)\b/gi;
+
+export function classifyNewsSentiment(title: string, summary: string): NewsSentiment {
+  const blob = `${title} ${summary}`;
+  const bullHits = (blob.match(BULL_HEADLINE_RE) ?? []).length;
+  const bearHits = (blob.match(BEAR_HEADLINE_RE) ?? []).length;
+  if (bullHits > bearHits && bullHits >= 1) return 'bull';
+  if (bearHits > bullHits && bearHits >= 1) return 'bear';
+  return 'neutral';
+}
+
+const NON_MARKET_NOISE_RE =
+  /\b(moneyist|stay-at-home|my husband|my wife|my spouse|my fiance|my mother|my father|my sister|my brother|my son|my daughter|raid (?:his|her|my|our) 401\(k\)|401\(k\)|social security|inheritance|will and trust|divorce|prenup|alimony|credit card debt|student loan forgiveness|should i retire|retire at \d+|early retirement|how much do i need to retire|i(?:'|’)m \d{2} and|wedding|tipping|etiquette|real estate agent|homebuyer|mortgage payment|dating|relationship advice)\b/i;
+
+export function isNonMarketNoise(title: string, summary: string): boolean {
+  return NON_MARKET_NOISE_RE.test(`${title} ${summary}`);
+}
+
+/**
+ * Normalizes publisher feed names into canonical outlet groups (e.g. CNBC, MarketWatch,
+ * Yahoo Finance, Investing.com) so hero/feature slots maintain multi-source diversity.
+ */
+export function getPublisherGroup(source: string): string {
+  const s = source.toLowerCase();
+  if (s.includes('cnbc')) return 'cnbc';
+  if (s.includes('marketwatch')) return 'marketwatch';
+  if (s.includes('yahoo')) return 'yahoo';
+  if (s.includes('investing')) return 'investing';
+  return s.replace(/[^a-z0-9]/g, '');
+}
+
 function stripHtml(raw: string): string {
   return raw
     .replace(/<[^>]*>/g, ' ')
@@ -188,7 +225,7 @@ export function getInitialEditorialNews(): NewsArticle[] {
   const min = 60_000;
   const hr = 60 * min;
 
-  return [
+  const base: NewsArticle[] = [
     {
       id: 'ed-ant-debut',
       title:
@@ -316,6 +353,11 @@ export function getInitialEditorialNews(): NewsArticle[] {
       tickers: ['NVDA', 'TSLA', 'ANT', 'PLTR'],
     },
   ];
+
+  return base.map((item) => ({
+    ...item,
+    sentiment: classifyNewsSentiment(item.title, item.summary),
+  }));
 }
 
 interface RssSource {
@@ -331,11 +373,6 @@ const LIVE_RSS_SOURCES: RssSource[] = [
     defaultCategory: 'macro',
   },
   {
-    name: 'CNBC Top News',
-    url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html',
-    defaultCategory: 'stocks',
-  },
-  {
     name: 'CNBC Investing',
     url: 'https://www.cnbc.com/id/15839069/device/rss/rss.html',
     defaultCategory: 'stocks',
@@ -346,13 +383,23 @@ const LIVE_RSS_SOURCES: RssSource[] = [
     defaultCategory: 'ai-tech',
   },
   {
-    name: 'MarketWatch',
-    url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
+    name: 'MarketWatch Pulse',
+    url: 'https://feeds.content.dowjones.io/public/rss/mw_marketpulse',
     defaultCategory: 'stocks',
   },
   {
     name: 'Yahoo Finance',
+    url: 'https://finance.yahoo.com/news/rssindex',
+    defaultCategory: 'stocks',
+  },
+  {
+    name: 'Yahoo Equities',
     url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=ANT,NVDA,TSLA,AAPL,MSFT,GOOGL,AMZN,META,SPCX,SPY&region=US&lang=en-US',
+    defaultCategory: 'stocks',
+  },
+  {
+    name: 'Investing.com',
+    url: 'https://www.investing.com/rss/news_25.rss',
     defaultCategory: 'stocks',
   },
 ];
@@ -390,17 +437,20 @@ async function fetchRssViaRss2Json(
     if (data.status !== 'ok' || !Array.isArray(data.items)) return [];
 
     const out: NewsArticle[] = [];
-    for (const item of data.items.slice(0, 10)) {
+    for (const item of data.items.slice(0, 12)) {
       const title = stripHtml(item.title ?? '');
       const url = (item.link ?? '').trim();
       if (!title || !url) continue;
 
       const rawDesc = item.description ?? '';
       const summary = stripHtml(rawDesc).slice(0, 220);
+      if (isNonMarketNoise(title, summary)) continue;
+
       const parsedTime = item.pubDate ? Date.parse(item.pubDate) : NaN;
       const publishedAt = Number.isFinite(parsedTime) ? parsedTime : Date.now();
       const tickers = extractTickersFromText(`${title} ${summary}`);
       const category = classifyCategory(title, summary) || src.defaultCategory;
+      const sentiment = classifyNewsSentiment(title, summary);
       const imageUrl =
         sanitizeImageUrl(item.thumbnail) ??
         sanitizeImageUrl(item.enclosure?.link) ??
@@ -419,6 +469,7 @@ async function fetchRssViaRss2Json(
         category,
         tickers,
         imageUrl,
+        sentiment,
         isBreaking: Date.now() - publishedAt < 3 * 3600_000,
         isLiveFetched: true,
       });
@@ -478,7 +529,7 @@ async function fetchRssViaXmlProxy(
       if (!xmlText || !xmlText.includes('<item')) continue;
 
       const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
-      const items = Array.from(doc.querySelectorAll('item')).slice(0, 10);
+      const items = Array.from(doc.querySelectorAll('item')).slice(0, 12);
       const out: NewsArticle[] = [];
 
       for (const node of items) {
@@ -488,11 +539,14 @@ async function fetchRssViaXmlProxy(
 
         const rawDesc = node.querySelector('description')?.textContent ?? '';
         const summary = stripHtml(rawDesc).slice(0, 220);
+        if (isNonMarketNoise(title, summary)) continue;
+
         const pubRaw = node.querySelector('pubDate')?.textContent ?? '';
         const parsedTime = pubRaw ? Date.parse(pubRaw) : NaN;
         const publishedAt = Number.isFinite(parsedTime) ? parsedTime : Date.now();
         const tickers = extractTickersFromText(`${title} ${summary}`);
         const category = classifyCategory(title, summary) || src.defaultCategory;
+        const sentiment = classifyNewsSentiment(title, summary);
         const imageUrl = extractXmlNodeImage(node, rawDesc);
 
         out.push({
@@ -506,6 +560,7 @@ async function fetchRssViaXmlProxy(
           category,
           tickers,
           imageUrl,
+          sentiment,
           isBreaking: Date.now() - publishedAt < 3 * 3600_000,
           isLiveFetched: true,
         });

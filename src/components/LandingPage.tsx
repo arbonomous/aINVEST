@@ -13,15 +13,18 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
+import type { DailyBreadCall } from '../lib/dailyBreadEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
   FALLBACK_EDITORIAL_IMAGES,
   formatRelativeAge,
   getInitialEditorialNews,
+  getPublisherGroup,
   type NewsArticle,
   type NewsCategory,
 } from '../lib/newsFeed';
+import type { TrackedTrade } from '../lib/paperTrades';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
 import { DailyBreadDesk } from './DailyBreadDesk';
@@ -45,7 +48,12 @@ interface LandingPageProps {
   liveNewsCount: number;
   lastNewsUpdated: string;
   refreshingNews: boolean;
+  trackedTrades: TrackedTrade[];
   onRefreshNews: () => void;
+  onTrackCall: (call: DailyBreadCall) => void;
+  onCloseTrade: (id: string, livePrice?: number) => void;
+  onRemoveTrade: (id: string) => void;
+  onClearClosedTrades: () => void;
   onSelectTicker: (ticker: string) => void;
   onOpenExplorer: (tab?: ExplorerTab) => void;
   onOpenDailyBread: () => void;
@@ -152,7 +160,12 @@ export function LandingPage({
   liveNewsCount,
   lastNewsUpdated,
   refreshingNews,
+  trackedTrades,
   onRefreshNews,
+  onTrackCall,
+  onCloseTrade,
+  onRemoveTrade,
+  onClearClosedTrades,
   onSelectTicker,
   onOpenExplorer,
   onOpenDailyBread,
@@ -164,7 +177,7 @@ export function LandingPage({
   const palette = THEME_MAP[themeId];
   const pinnedSet = useMemo(() => new Set(pinnedTickers), [pinnedTickers]);
 
-  // Automatically promote the freshest live breaking news into Hero + 2 Feature slots
+  // Promote freshest live breaking news into Hero + 2 Feature slots with strict publisher diversity
   const { heroStory, featurePair, streamStories, breakingLead } = useMemo(() => {
     const editorialFallback = getInitialEditorialNews();
     const livePool = articles.filter((a) => a.isLiveFetched);
@@ -185,25 +198,50 @@ export function LandingPage({
       return { ...story, imageUrl: chosen };
     };
 
-    let selectedTop: NewsArticle[];
-    if (livePool.length >= 3) {
-      // Score live stories so stories with publisher photos and mentioned tickers rise to top 3
-      const scored = [...livePool].sort((a, b) => {
-        const scoreA =
-          (a.imageUrl ? 40 : 0) +
-          (a.tickers.length > 0 ? 25 : 0) +
-          (a.isBreaking ? 15 : 0);
-        const scoreB =
-          (b.imageUrl ? 40 : 0) +
-          (b.tickers.length > 0 ? 25 : 0) +
-          (b.isBreaking ? 15 : 0);
-        if (scoreB !== scoreA) return scoreB - scoreA;
+    const pickDiverseTop3 = (pool: NewsArticle[]): NewsArticle[] => {
+      const score = (a: NewsArticle) =>
+        (a.tickers.length > 0 ? 32 : 0) +
+        (a.imageUrl ? 22 : 0) +
+        (a.isBreaking ? 18 : 0) +
+        (a.sentiment && a.sentiment !== 'neutral' ? 6 : 0);
+
+      const ranked = [...pool].sort((a, b) => {
+        const diff = score(b) - score(a);
+        if (diff !== 0) return diff;
         return b.publishedAt - a.publishedAt;
       });
-      selectedTop = scored.slice(0, 3).map(attachDistinctFallback);
+
+      const picked: NewsArticle[] = [];
+      const usedPublishers = new Set<string>();
+
+      // Pass 1: At most 1 story per publisher group (CNBC, Yahoo Finance, MarketWatch, Investing.com)
+      for (const story of ranked) {
+        if (picked.length >= 3) break;
+        const pub = getPublisherGroup(story.source);
+        if (usedPublishers.has(pub)) continue;
+        usedPublishers.add(pub);
+        picked.push(story);
+      }
+
+      // Pass 2: Fill remaining slots only if fewer than 3 distinct outlets returned live items
+      if (picked.length < 3) {
+        const pickedIds = new Set(picked.map((p) => p.id));
+        for (const story of ranked) {
+          if (picked.length >= 3) break;
+          if (pickedIds.has(story.id)) continue;
+          pickedIds.add(story.id);
+          picked.push(story);
+        }
+      }
+
+      return picked.slice(0, 3).map(attachDistinctFallback);
+    };
+
+    let selectedTop: NewsArticle[];
+    if (livePool.length >= 3) {
+      selectedTop = pickDiverseTop3(livePool);
     } else if (livePool.length > 0) {
-      const combinedTop = [...livePool, ...editorialFallback].slice(0, 3);
-      selectedTop = combinedTop.map(attachDistinctFallback);
+      selectedTop = pickDiverseTop3([...livePool, ...editorialFallback]);
     } else {
       selectedTop = editorialFallback.slice(0, 3);
     }
@@ -486,6 +524,11 @@ export function LandingPage({
                 {heroStory.isLiveFetched && (
                   <span className="news-live-tag">LIVE WIRE</span>
                 )}
+                {heroStory.sentiment && heroStory.sentiment !== 'neutral' && (
+                  <span className={`news-sent-tag news-sent-tag--${heroStory.sentiment}`}>
+                    {heroStory.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
+                  </span>
+                )}
               </div>
 
               <h1 className="editorial-hero-headline">
@@ -572,6 +615,11 @@ export function LandingPage({
                     <span>{formatRelativeAge(story.publishedAt)}</span>
                     {story.isLiveFetched && (
                       <span className="news-live-tag">LIVE</span>
+                    )}
+                    {story.sentiment && story.sentiment !== 'neutral' && (
+                      <span className={`news-sent-tag news-sent-tag--${story.sentiment}`}>
+                        {story.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
+                      </span>
                     )}
                   </div>
 
@@ -663,6 +711,11 @@ export function LandingPage({
                           )}
                           {item.category === 'ipos' && (
                             <span className="news-ipo-tag">IPO</span>
+                          )}
+                          {item.sentiment && item.sentiment !== 'neutral' && (
+                            <span className={`news-sent-tag news-sent-tag--${item.sentiment}`}>
+                              {item.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
+                            </span>
                           )}
                         </div>
 
@@ -1058,6 +1111,11 @@ export function LandingPage({
         quoteMap={quoteMap}
         directoryMap={directoryMap}
         breakingNews={articles}
+        trackedTrades={trackedTrades}
+        onTrackCall={onTrackCall}
+        onCloseTrade={onCloseTrade}
+        onRemoveTrade={onRemoveTrade}
+        onClearClosedTrades={onClearClosedTrades}
         onSelectTicker={onSelectTicker}
         onOpenFullDesk={onOpenDailyBread}
       />
