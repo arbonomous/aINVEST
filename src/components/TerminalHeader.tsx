@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowRight,
+  Bell,
+  BellRing,
   Check,
   Flame,
   Globe,
@@ -23,9 +25,12 @@ interface TerminalHeaderProps {
   ctxMap: Record<string, HlAssetCtx>;
   directory: DirectoryEntry[];
   directoryMap: Record<string, DirectoryEntry>;
+  activeAlertsCount: number;
+  triggeredAlertsCount: number;
   onSelectView: (view: AppView) => void;
   onSelectTicker: (ticker: string) => void;
   onOpenExplorer: (tab?: ExplorerTab) => void;
+  onOpenAlerts: () => void;
   onShareLink: () => void;
   copied: boolean;
   themeId: ThemeId;
@@ -54,9 +59,12 @@ export function TerminalHeader({
   ctxMap,
   directory,
   directoryMap,
+  activeAlertsCount,
+  triggeredAlertsCount,
   onSelectView,
   onSelectTicker,
   onOpenExplorer,
+  onOpenAlerts,
   onShareLink,
   copied,
   themeId,
@@ -485,6 +493,33 @@ export function TerminalHeader({
               </button>
             ))}
           </div>
+
+          <button
+            id="alerts-drawer-btn"
+            type="button"
+            className={`alerts-header-btn mono${
+              triggeredAlertsCount > 0
+                ? ' has-triggered'
+                : activeAlertsCount > 0
+                  ? ' has-active'
+                  : ''
+            }`}
+            onClick={onOpenAlerts}
+            title="Live Price Alerts (free browser notifications & chime)"
+            aria-label={`Open Price Alerts (${activeAlertsCount} active)`}
+          >
+            {triggeredAlertsCount > 0 ? (
+              <BellRing size={14} strokeWidth={2.1} />
+            ) : (
+              <Bell size={14} strokeWidth={2} />
+            )}
+            <span>Alerts</span>
+            {(activeAlertsCount > 0 || triggeredAlertsCount > 0) && (
+              <span className="alerts-count-badge">
+                {triggeredAlertsCount > 0 ? triggeredAlertsCount : activeAlertsCount}
+              </span>
+            )}
+          </button>
 
           <button
             id="share-room-btn"

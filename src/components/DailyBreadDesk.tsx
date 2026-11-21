@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
+  BellPlus,
   BookmarkCheck,
   BookmarkPlus,
   Crosshair,
@@ -61,6 +62,12 @@ interface DailyBreadDeskProps {
   trackedTrades: TrackedTrade[];
   compact?: boolean;
   onTrackCall: (call: DailyBreadCall) => void;
+  onArmAlert: (params: {
+    ticker: string;
+    targetPrice: number;
+    currentPrice?: number | null;
+    label: string;
+  }) => void;
   onCloseTrade: (id: string, livePrice?: number) => void;
   onRemoveTrade: (id: string) => void;
   onClearClosedTrades: () => void;
@@ -80,6 +87,7 @@ export function DailyBreadDesk({
   trackedTrades,
   compact = false,
   onTrackCall,
+  onArmAlert,
   onCloseTrade,
   onRemoveTrade,
   onClearClosedTrades,
@@ -719,6 +727,33 @@ export function DailyBreadDesk({
                   </span>
 
                   <div className="bread-footer-actions">
+                    <button
+                      type="button"
+                      className="bread-alert-btn mono"
+                      onClick={() =>
+                        onArmAlert({
+                          ticker: call.ticker,
+                          targetPrice:
+                            call.direction === 'WAIT'
+                              ? call.target1
+                              : Number(((call.entryLow + call.entryHigh) / 2).toFixed(3)),
+                          currentPrice: call.livePrice,
+                          label:
+                            call.direction === 'WAIT'
+                              ? 'AI Breakout Watch'
+                              : `AI ${call.direction} Entry`,
+                        })
+                      }
+                      title={
+                        call.direction === 'WAIT'
+                          ? `Arm breakout alert at ${fmtPx(call.target1)}`
+                          : `Arm entry alert at ${fmtPx((call.entryLow + call.entryHigh) / 2)}`
+                      }
+                    >
+                      <BellPlus size={11} />
+                      <span>ALERT</span>
+                    </button>
+
                     {call.direction !== 'WAIT' && (
                       <button
                         type="button"

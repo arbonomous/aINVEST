@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BellPlus,
   BookmarkCheck,
   BookmarkPlus,
   Crosshair,
@@ -24,6 +25,12 @@ interface DailyBreadTickerCardProps {
   breakingNews: NewsArticle[];
   isTracked?: boolean;
   onTrackCall?: (call: DailyBreadCall) => void;
+  onArmAlert?: (params: {
+    ticker: string;
+    targetPrice: number;
+    currentPrice?: number | null;
+    label: string;
+  }) => void;
   onPlanUpdate?: (plan: ChartTradePlan | null) => void;
   onSelectPriceLevel: (price: number) => void;
 }
@@ -38,6 +45,7 @@ function DailyBreadTickerCardComponent({
   breakingNews,
   isTracked = false,
   onTrackCall,
+  onArmAlert,
   onPlanUpdate,
   onSelectPriceLevel,
 }: DailyBreadTickerCardProps) {
@@ -211,63 +219,80 @@ function DailyBreadTickerCardComponent({
 
             <p className="bread-thesis">{call.thesis}</p>
 
-            {/* Clickable Levels -> Load directly into Valuation & P&L Calculator */}
+            {/* Clickable Levels -> Load into Calculator or 1-Click Arm Price Alert */}
             <div className="bread-term-levels-grid mono">
-              <button
-                type="button"
-                className="bread-term-lvl-btn"
-                onClick={() => onSelectPriceLevel(call.entryLow)}
-                title="Load entry level into P&L Calculator"
-              >
-                <span className="bread-lvl-label">
-                  {call.direction === 'WAIT' ? 'VWAP PIVOT' : 'ENTRY ZONE'}
-                </span>
-                <span className="bread-lvl-val">
-                  {fmtPx(call.entryLow)}–{fmtPx(call.entryHigh)}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="bread-term-lvl-btn"
-                onClick={() => onSelectPriceLevel(call.target1)}
-                title="Load Target 1 into P&L Calculator"
-              >
-                <span className="bread-lvl-label">
-                  {call.direction === 'WAIT' ? 'BREAKOUT' : 'TARGET 1'}
-                </span>
-                <span className="bread-lvl-val text-emerald">
-                  {fmtPx(call.target1)}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="bread-term-lvl-btn"
-                onClick={() => onSelectPriceLevel(call.target2)}
-                title="Load Target 2 into P&L Calculator"
-              >
-                <span className="bread-lvl-label">
-                  {call.direction === 'WAIT' ? 'EXT TARGET' : 'TARGET 2'}
-                </span>
-                <span className="bread-lvl-val text-emerald">
-                  {fmtPx(call.target2)}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="bread-term-lvl-btn"
-                onClick={() => onSelectPriceLevel(call.stopLoss)}
-                title="Load Stop Loss into P&L Calculator"
-              >
-                <span className="bread-lvl-label">
-                  {call.direction === 'WAIT' ? 'BREAKDOWN' : 'STOP LOSS'}
-                </span>
-                <span className="bread-lvl-val text-crimson">
-                  {fmtPx(call.stopLoss)}
-                </span>
-              </button>
+              {(
+                [
+                  {
+                    key: 'entry',
+                    label: call.direction === 'WAIT' ? 'VWAP PIVOT' : 'ENTRY ZONE',
+                    display: `${fmtPx(call.entryLow)}–${fmtPx(call.entryHigh)}`,
+                    price: Number(((call.entryLow + call.entryHigh) / 2).toFixed(3)),
+                    calcPrice: call.entryLow,
+                    toneClass: '',
+                    alertLabel: call.direction === 'WAIT' ? 'AI VWAP Pivot' : `AI ${call.direction} Entry`,
+                  },
+                  {
+                    key: 'tp1',
+                    label: call.direction === 'WAIT' ? 'BREAKOUT' : 'TARGET 1',
+                    display: fmtPx(call.target1),
+                    price: call.target1,
+                    calcPrice: call.target1,
+                    toneClass: ' text-emerald',
+                    alertLabel: call.direction === 'WAIT' ? 'AI Breakout' : 'AI Target 1',
+                  },
+                  {
+                    key: 'tp2',
+                    label: call.direction === 'WAIT' ? 'EXT TARGET' : 'TARGET 2',
+                    display: fmtPx(call.target2),
+                    price: call.target2,
+                    calcPrice: call.target2,
+                    toneClass: ' text-emerald',
+                    alertLabel: call.direction === 'WAIT' ? 'AI Ext Target' : 'AI Target 2',
+                  },
+                  {
+                    key: 'stop',
+                    label: call.direction === 'WAIT' ? 'BREAKDOWN' : 'STOP LOSS',
+                    display: fmtPx(call.stopLoss),
+                    price: call.stopLoss,
+                    calcPrice: call.stopLoss,
+                    toneClass: ' text-crimson',
+                    alertLabel: call.direction === 'WAIT' ? 'AI Breakdown' : 'AI Stop Loss',
+                  },
+                ] as const
+              ).map((lvl) => (
+                <div key={lvl.key} className="bread-term-lvl-cell">
+                  <button
+                    type="button"
+                    className="bread-term-lvl-btn"
+                    onClick={() => onSelectPriceLevel(lvl.calcPrice)}
+                    title={`Load ${lvl.label} into P&L Calculator`}
+                  >
+                    <span className="bread-lvl-label">{lvl.label}</span>
+                    <span className={`bread-lvl-val${lvl.toneClass}`}>
+                      {lvl.display}
+                    </span>
+                  </button>
+                  {onArmAlert && (
+                    <button
+                      type="button"
+                      className="bread-lvl-bell-btn"
+                      onClick={() =>
+                        onArmAlert({
+                          ticker: meta.ticker,
+                          targetPrice: lvl.price,
+                          currentPrice: liveQuote?.price ?? call.livePrice,
+                          label: lvl.alertLabel,
+                        })
+                      }
+                      title={`Arm free live alert at ${fmtPx(lvl.price)} (${lvl.alertLabel})`}
+                      aria-label={`Arm price alert for ${meta.ticker} at ${fmtPx(lvl.price)}`}
+                    >
+                      <BellPlus size={11} />
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
 
             <div className="bread-indicators-row mono">

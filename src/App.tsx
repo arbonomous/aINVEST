@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { AiIntelligencePanel } from './components/AiIntelligencePanel';
+import { AlertsDrawer } from './components/AlertsDrawer';
 import { DailyBreadDesk } from './components/DailyBreadDesk';
 import { DailyBreadTickerCard } from './components/DailyBreadTickerCard';
 import { ExecutionChartPanel } from './components/ExecutionChartPanel';
@@ -11,6 +12,7 @@ import {
   MarketExplorerModal,
   type ExplorerTab,
 } from './components/MarketExplorerModal';
+import { OvernightRadarPanel } from './components/OvernightRadarPanel';
 import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
@@ -41,6 +43,17 @@ import {
   saveTrackedTrades,
   type TrackedTrade,
 } from './lib/paperTrades';
+import {
+  createPriceAlert,
+  evaluateAlertsWithPrices,
+  loadAlertSoundEnabled,
+  loadPriceAlerts,
+  playAlertChime,
+  saveAlertSoundEnabled,
+  savePriceAlerts,
+  sendBrowserAlertNotification,
+  type PriceAlert,
+} from './lib/priceAlerts';
 import {
   THEME_MAP,
   applyTheme,
@@ -139,6 +152,17 @@ export function App() {
   );
   const [activeTradePlan, setActiveTradePlan] = useState<ChartTradePlan | null>(
     null,
+  );
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>(() =>
+    loadPriceAlerts(),
+  );
+  const [alertSoundEnabled, setAlertSoundEnabled] = useState<boolean>(() =>
+    loadAlertSoundEnabled(),
+  );
+  const [alertsDrawerOpen, setAlertsDrawerOpen] = useState<boolean>(false);
+  const alertSoundRef = useRef<boolean>(alertSoundEnabled);
+  const processAlertHitsRef = useRef<(priceMap: Record<string, number>) => void>(
+    () => {},
   );
 
   const directoryMap = useMemo<Record<string, DirectoryEntry>>(() => {
@@ -354,6 +378,7 @@ export function App() {
           if (changed) saveTrackedTrades(trades);
           return changed ? trades : prev;
         });
+        processAlertHitsRef.current(pxMap);
       } catch {
         // Keep last good map
       }
@@ -378,6 +403,98 @@ export function App() {
       setToastMessage(null);
       setCopied(false);
     }, 2600);
+  }, []);
+
+  const priceAlertsRef = useRef<PriceAlert[]>(priceAlerts);
+
+  useEffect(() => {
+    priceAlertsRef.current = priceAlerts;
+  }, [priceAlerts]);
+
+  const processAlertHits = useCallback(
+    (priceMap: Record<string, number>) => {
+      const res = evaluateAlertsWithPrices(priceAlertsRef.current, priceMap);
+      if (res.newlyTriggered.length === 0) return;
+
+      priceAlertsRef.current = res.alerts;
+      savePriceAlerts(res.alerts);
+      setPriceAlerts(res.alerts);
+
+      if (alertSoundRef.current) {
+        playAlertChime();
+      }
+      for (const hit of res.newlyTriggered) {
+        sendBrowserAlertNotification(hit);
+      }
+      const first = res.newlyTriggered[0];
+      const hitPx = first.triggeredPrice ?? first.targetPrice;
+      showToast(
+        `ALERT HIT: ${first.ticker} @ $${hitPx.toFixed(2)} (${first.label})`,
+      );
+    },
+    [showToast],
+  );
+
+  useEffect(() => {
+    alertSoundRef.current = alertSoundEnabled;
+  }, [alertSoundEnabled]);
+
+  useEffect(() => {
+    processAlertHitsRef.current = processAlertHits;
+  }, [processAlertHits]);
+
+  const handleArmAlert = useCallback(
+    (params: {
+      ticker: string;
+      targetPrice: number;
+      currentPrice?: number | null;
+      label?: string;
+    }) => {
+      const created = createPriceAlert(params);
+      if (!created) return;
+      setPriceAlerts((prev) => {
+        const duplicate = prev.some(
+          (a) =>
+            a.status === 'ACTIVE' &&
+            a.ticker === created.ticker &&
+            a.condition === created.condition &&
+            Math.abs(a.targetPrice - created.targetPrice) < 0.005,
+        );
+        if (duplicate) return prev;
+        const next = [created, ...prev].slice(0, 50);
+        priceAlertsRef.current = next;
+        savePriceAlerts(next);
+        return next;
+      });
+      showToast(
+        `Alert armed: ${created.ticker} ${created.condition === 'ABOVE' ? '▲' : '▼'} $${created.targetPrice.toFixed(2)} (${created.label})`,
+      );
+    },
+    [showToast],
+  );
+
+  const handleDeleteAlert = useCallback((id: string) => {
+    setPriceAlerts((prev) => {
+      const next = prev.filter((a) => a.id !== id);
+      priceAlertsRef.current = next;
+      savePriceAlerts(next);
+      return next;
+    });
+  }, []);
+
+  const handleClearTriggeredAlerts = useCallback(() => {
+    setPriceAlerts((prev) => {
+      const next = prev.filter((a) => a.status === 'ACTIVE');
+      priceAlertsRef.current = next;
+      savePriceAlerts(next);
+      return next;
+    });
+    showToast('Cleared triggered alerts');
+  }, [showToast]);
+
+  const handleToggleAlertSound = useCallback((enabled: boolean) => {
+    setAlertSoundEnabled(enabled);
+    saveAlertSoundEnabled(enabled);
   }, []);
 
   useEffect(() => {
@@ -459,6 +576,7 @@ export function App() {
         if (changed) saveTrackedTrades(trades);
         return changed ? trades : prev;
       });
+      processAlertHitsRef.current({ [next.ticker]: next.markPx });
     }
   }, []);
 
@@ -486,6 +604,7 @@ export function App() {
         if (changed) saveTrackedTrades(trades);
         return changed ? trades : prev;
       });
+      processAlertHitsRef.current({ [next.ticker]: livePx });
     }
   }, []);
 
@@ -612,6 +731,16 @@ export function App() {
     );
   }, [trackedTrades, activeTradePlan, meta.ticker]);
 
+  const { activeAlertsCount, triggeredAlertsCount } = useMemo(() => {
+    let active = 0;
+    let triggered = 0;
+    for (const a of priceAlerts) {
+      if (a.status === 'ACTIVE') active += 1;
+      else triggered += 1;
+    }
+    return { activeAlertsCount: active, triggeredAlertsCount: triggered };
+  }, [priceAlerts]);
+
   return (
     <div className="war-room-shell">
       {/* Top Scrolling Ticker Tape (Flagship Stocks + Hot 2025-2026 IPOs + Indices) */}
@@ -623,16 +752,19 @@ export function App() {
         onSelectTicker={handleSelectTicker}
       />
 
-      {/* Institutional Header with Markets/Daily Bread/Terminal Nav, Universal ⌘K Search & Explorer */}
+      {/* Institutional Header with Markets/Daily Bread/Terminal Nav, Universal ⌘K Search, Alerts & Explorer */}
       <TerminalHeader
         activeView={activeView}
         activeTicker={meta.ticker}
         ctxMap={ctxMap}
         directory={directory}
         directoryMap={directoryMap}
+        activeAlertsCount={activeAlertsCount}
+        triggeredAlertsCount={triggeredAlertsCount}
         onSelectView={handleSelectView}
         onSelectTicker={handleSelectTicker}
         onOpenExplorer={handleOpenExplorer}
+        onOpenAlerts={() => setAlertsDrawerOpen(true)}
         onShareLink={handleShareLink}
         copied={copied}
         themeId={themeId}
@@ -654,6 +786,7 @@ export function App() {
           trackedTrades={trackedTrades}
           onRefreshNews={() => void handleRefreshNews()}
           onTrackCall={handleTrackCall}
+          onArmAlert={handleArmAlert}
           onCloseTrade={handleCloseTrade}
           onRemoveTrade={handleRemoveTrade}
           onClearClosedTrades={handleClearClosedTrades}
@@ -664,6 +797,13 @@ export function App() {
         />
       ) : activeView === 'daily-bread' ? (
         <main className="landing-main daily-bread-page-main">
+          <OvernightRadarPanel
+            variant="wide"
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            onSelectTicker={handleSelectTicker}
+          />
           <DailyBreadDesk
             ctxMap={ctxMap}
             quoteMap={quoteMap}
@@ -671,6 +811,7 @@ export function App() {
             breakingNews={articles}
             trackedTrades={trackedTrades}
             onTrackCall={handleTrackCall}
+            onArmAlert={handleArmAlert}
             onCloseTrade={handleCloseTrade}
             onRemoveTrade={handleRemoveTrade}
             onClearClosedTrades={handleClearClosedTrades}
@@ -733,6 +874,7 @@ export function App() {
                 breakingNews={articles}
                 isTracked={isActiveCallTracked}
                 onTrackCall={handleTrackCall}
+                onArmAlert={handleArmAlert}
                 onPlanUpdate={setActiveTradePlan}
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
@@ -776,6 +918,25 @@ export function App() {
           onTogglePin={handleTogglePin}
           onSelectTicker={handleSelectTicker}
           onClose={() => setExplorerOpen(false)}
+        />
+      )}
+
+      {/* Free Live Price Alerts Manager Modal */}
+      {alertsDrawerOpen && (
+        <AlertsDrawer
+          open={alertsDrawerOpen}
+          defaultTicker={meta.ticker}
+          ctxMap={ctxMap}
+          quoteMap={quoteMap}
+          directoryMap={directoryMap}
+          alerts={priceAlerts}
+          soundEnabled={alertSoundEnabled}
+          onToggleSound={handleToggleAlertSound}
+          onAddAlert={handleArmAlert}
+          onDeleteAlert={handleDeleteAlert}
+          onClearTriggered={handleClearTriggeredAlerts}
+          onSelectTicker={handleSelectTicker}
+          onClose={() => setAlertsDrawerOpen(false)}
         />
       )}
 

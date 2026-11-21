@@ -29,6 +29,7 @@ import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
 import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
+import { OvernightRadarPanel } from './OvernightRadarPanel';
 import { TradingViewEmbed } from './TradingViewEmbed';
 
 const TV_TIMELINE_SCRIPT =
@@ -51,6 +52,12 @@ interface LandingPageProps {
   trackedTrades: TrackedTrade[];
   onRefreshNews: () => void;
   onTrackCall: (call: DailyBreadCall) => void;
+  onArmAlert: (params: {
+    ticker: string;
+    targetPrice: number;
+    currentPrice?: number | null;
+    label: string;
+  }) => void;
   onCloseTrade: (id: string, livePrice?: number) => void;
   onRemoveTrade: (id: string) => void;
   onClearClosedTrades: () => void;
@@ -163,6 +170,7 @@ export function LandingPage({
   trackedTrades,
   onRefreshNews,
   onTrackCall,
+  onArmAlert,
   onCloseTrade,
   onRemoveTrade,
   onClearClosedTrades,
@@ -936,6 +944,15 @@ export function LandingPage({
             </div>
           </section>
 
+          {/* 24/7 Overnight Gap & Funding-Squeeze Radar (Hyperliquid HIP-3 Edge) */}
+          <OvernightRadarPanel
+            variant="rail"
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            onSelectTicker={onSelectTicker}
+          />
+
           {/* IPO Spotlight & 2026 Debuts */}
           <section className="rail-card" aria-label="2026 IPO Spotlight">
             <div className="rail-card-header">
@@ -1113,6 +1130,7 @@ export function LandingPage({
         breakingNews={articles}
         trackedTrades={trackedTrades}
         onTrackCall={onTrackCall}
+        onArmAlert={onArmAlert}
         onCloseTrade={onCloseTrade}
         onRemoveTrade={onRemoveTrade}
         onClearClosedTrades={onClearClosedTrades}
