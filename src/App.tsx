@@ -13,6 +13,7 @@ import {
   type ExplorerTab,
 } from './components/MarketExplorerModal';
 import { OvernightRadarPanel } from './components/OvernightRadarPanel';
+import { OptionsFlowTickerCard } from './components/OptionsFlowTickerCard';
 import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
@@ -20,6 +21,7 @@ import { TechnicalGaugePanel } from './components/TechnicalGaugePanel';
 import { TerminalFooter } from './components/TerminalFooter';
 import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
+import { WhaleFlowDesk } from './components/WhaleFlowDesk';
 import { resolveTickerMeta } from './data/tickers';
 import type { DailyBreadCall } from './lib/dailyBreadEngine';
 import {
@@ -79,8 +81,12 @@ function getInitialRouteFromUrl(): { view: AppView; ticker: string } {
     if (t && /^[a-zA-Z0-9._-]{1,16}$/.test(t.trim())) {
       return { view: 'terminal', ticker: t.trim().toUpperCase() };
     }
-    if (params.get('view') === 'daily-bread') {
+    const v = params.get('view');
+    if (v === 'daily-bread') {
       return { view: 'daily-bread', ticker: 'ANT' };
+    }
+    if (v === 'whale-flow') {
+      return { view: 'whale-flow', ticker: 'ANT' };
     }
   } catch {
     // Ignore
@@ -217,6 +223,28 @@ export function App() {
         }
         if (url.searchParams.has('view')) {
           url.searchParams.delete('view');
+          changed = true;
+        }
+        if (changed) {
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {
+        // Ignore history API restrictions
+      }
+      return;
+    }
+
+    if (activeView === 'whale-flow') {
+      document.title = 'Whale Flow — Unusual Options & 24/7 Tape | aINVEST';
+      try {
+        const url = new URL(window.location.href);
+        let changed = false;
+        if (url.searchParams.has('ticker')) {
+          url.searchParams.delete('ticker');
+          changed = true;
+        }
+        if (url.searchParams.get('view') !== 'whale-flow') {
+          url.searchParams.set('view', 'whale-flow');
           changed = true;
         }
         if (changed) {
@@ -685,9 +713,11 @@ export function App() {
       showToast(
         activeView === 'home'
           ? 'aINVEST Markets link copied'
-          : activeView === 'daily-bread'
-            ? 'Daily Bread AI Desk link copied'
-            : `${meta.ticker} War Room link copied`,
+          : activeView === 'whale-flow'
+            ? 'Whale Flow Terminal link copied'
+            : activeView === 'daily-bread'
+              ? 'Daily Bread AI Desk link copied'
+              : `${meta.ticker} War Room link copied`,
       );
     } else {
       showToast('Copy URL from address bar');
@@ -752,7 +782,7 @@ export function App() {
         onSelectTicker={handleSelectTicker}
       />
 
-      {/* Institutional Header with Markets/Daily Bread/Terminal Nav, Universal ⌘K Search, Alerts & Explorer */}
+      {/* Institutional Header with Markets/Whale Flow/Daily Bread/Terminal Nav, Universal ⌘K Search, Alerts & Explorer */}
       <TerminalHeader
         activeView={activeView}
         activeTicker={meta.ticker}
@@ -795,6 +825,15 @@ export function App() {
           onOpenDailyBread={() => handleSelectView('daily-bread')}
           onTogglePin={handleTogglePin}
         />
+      ) : activeView === 'whale-flow' ? (
+        <main className="landing-main daily-bread-page-main">
+          <WhaleFlowDesk
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            onSelectTicker={handleSelectTicker}
+          />
+        </main>
       ) : activeView === 'daily-bread' ? (
         <main className="landing-main daily-bread-page-main">
           <OvernightRadarPanel
@@ -879,17 +918,25 @@ export function App() {
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
 
-              {/* Panel B — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
+              {/* Panel B — Unusual Options Flow, Max Pain & Gamma Regime */}
+              <OptionsFlowTickerCard
+                meta={meta}
+                livePrice={activeQuote?.price ?? null}
+                onSelectPriceLevel={handleSelectPriceLevel}
+                onArmAlert={handleArmAlert}
+              />
+
+              {/* Panel C — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
               <TechnicalGaugePanel meta={meta} themeId={themeId} />
 
-              {/* Panel C — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
+              {/* Panel D — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
               <AiIntelligencePanel
                 meta={meta}
                 liveQuote={activeQuote}
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
 
-              {/* Panel D — Dynamic Valuation & Position P&L Calculator */}
+              {/* Panel E — Dynamic Valuation & Position P&L Calculator */}
               <ValuationCalculatorPanel
                 meta={meta}
                 livePrice={activeQuote?.price ?? null}

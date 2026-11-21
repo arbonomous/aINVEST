@@ -10,6 +10,7 @@ import {
   Newspaper,
   Search,
   Share2,
+  Waves,
 } from 'lucide-react';
 import { CURATED_MAP, FEATURED_IPOS, FLAGSHIP_TICKERS } from '../data/tickers';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
@@ -17,7 +18,7 @@ import type { DirectoryEntry } from '../lib/marketCatalog';
 import { THEMES, type ThemeId } from '../lib/themes';
 import type { ExplorerTab } from './MarketExplorerModal';
 
-export type AppView = 'home' | 'daily-bread' | 'terminal';
+export type AppView = 'home' | 'whale-flow' | 'daily-bread' | 'terminal';
 
 interface TerminalHeaderProps {
   activeView: AppView;
@@ -289,6 +290,16 @@ export function TerminalHeader({
             <span>MARKETS</span>
           </button>
           <button
+            id="nav-view-whale-flow"
+            type="button"
+            className={`view-nav-btn view-nav-btn--whale mono${activeView === 'whale-flow' ? ' active' : ''}`}
+            aria-current={activeView === 'whale-flow' ? 'page' : undefined}
+            onClick={() => onSelectView('whale-flow')}
+          >
+            <Waves size={12} />
+            <span>WHALE FLOW</span>
+          </button>
+          <button
             id="nav-view-daily-bread"
             type="button"
             className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
@@ -457,9 +468,11 @@ export function TerminalHeader({
             <span>
               {activeView === 'home'
                 ? 'MARKETS'
-                : activeView === 'daily-bread'
-                  ? 'DAILY BREAD'
-                  : `ROOM: ${activeTicker}`}
+                : activeView === 'whale-flow'
+                  ? 'WHALE FLOW'
+                  : activeView === 'daily-bread'
+                    ? 'DAILY BREAD'
+                    : `ROOM: ${activeTicker}`}
             </span>
             <span className="session-divider" aria-hidden="true" />
             <span className="session-clock">{etClock} ET</span>

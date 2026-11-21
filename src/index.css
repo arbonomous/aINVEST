@@ -7140,5 +7140,686 @@ body {
   }
 }
 
+/* ===========================
+   WHALE FLOW — UNUSUAL OPTIONS, MARKET TIDE & 24/7 WHALE TAPE
+   =========================== */
+
+.view-nav-btn--whale.active {
+  color: var(--emerald);
+  border-color: var(--emerald-border);
+  background-color: var(--emerald-dim);
+}
+
+.whale-flow-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.whale-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--card-inset);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.whale-hero-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 16px 13px;
+  background-color: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.whale-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.whale-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background-color: var(--emerald-dim);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.whale-tide-readout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.whale-tide-pill {
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.whale-tide-pill--bull {
+  background-color: var(--emerald-dim);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald);
+}
+
+.whale-tide-pill--bear {
+  background-color: var(--crimson-dim);
+  border: 1px solid var(--crimson-border);
+  color: var(--crimson);
+}
+
+.whale-tide-pill--amber {
+  background-color: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  color: var(--amber);
+}
+
+.whale-tide-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 16px;
+  background-color: var(--bg-subbar);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.whale-tide-metrics {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.whale-split-bar {
+  display: flex;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background-color: var(--bg-obsidian);
+  border: 1px solid var(--border-subtle);
+}
+
+.whale-split-bull {
+  background-color: var(--emerald);
+  transition: width 300ms ease;
+}
+
+.whale-split-bear {
+  background-color: var(--crimson);
+  transition: width 300ms ease;
+}
+
+/* 6-Sector Flow Heatmap */
+.whale-sector-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+  background-color: var(--bg-obsidian);
+}
+
+.whale-sector-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-hairline);
+  background-color: var(--bg-surface);
+  min-width: 0;
+}
+
+.whale-sector-tile--strong-bull {
+  border-color: var(--emerald-border);
+  background-color: var(--emerald-dim);
+}
+
+.whale-sector-tile--bull {
+  border-top: 2px solid var(--emerald);
+}
+
+.whale-sector-tile--strong-bear {
+  border-color: var(--crimson-border);
+  background-color: var(--crimson-dim);
+}
+
+.whale-sector-tile--bear {
+  border-top: 2px solid var(--crimson);
+}
+
+.whale-sector-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.whale-sector-name {
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.whale-sector-tickers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.whale-sector-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.whale-sector-chip:hover {
+  border-color: var(--border-hover);
+  background-color: var(--bg-hover);
+}
+
+/* Split Command Grid: UOA Table (Left) + Live 24/7 Whale Tape (Right) */
+.whale-split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.whale-scan-form {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 220px;
+}
+
+.whale-scan-input {
+  height: 27px;
+  padding: 0 9px 0 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-hairline);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 11px;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+.whale-scan-input:focus {
+  border-color: var(--emerald);
+}
+
+.whale-uoa-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px 12px;
+  background-color: var(--bg-subbar);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.whale-maxpain-ribbon {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.whale-mp-k {
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.whale-mp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border-hairline);
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.whale-mp-chip:hover {
+  border-color: var(--amber-border);
+  background-color: var(--bg-hover);
+}
+
+.whale-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.whale-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.whale-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  background-color: var(--bg-obsidian);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.whale-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+  color: var(--text-primary);
+}
+
+.whale-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.whale-sym-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.whale-sym-btn:hover {
+  color: var(--emerald);
+  text-decoration: underline;
+}
+
+.whale-spot-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.whale-cp-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.whale-cp-badge--bull {
+  background-color: var(--emerald-dim);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald);
+}
+
+.whale-cp-badge--bear {
+  background-color: var(--crimson-dim);
+  border: 1px solid var(--crimson-border);
+  color: var(--crimson);
+}
+
+.whale-tags-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.whale-sig-tag {
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.whale-sig-tag--amber {
+  background-color: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  color: var(--amber);
+}
+
+.whale-sig-tag--bull {
+  background-color: var(--emerald-dim);
+  color: var(--emerald);
+}
+
+.whale-sig-tag--bear {
+  background-color: var(--crimson-dim);
+  color: var(--crimson);
+}
+
+/* Live 24/7 Whale Tape */
+.whale-tape-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+
+.whale-tape-delta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 12px;
+  background-color: var(--bg-subbar);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.whale-tape-delta-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.whale-side-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.whale-mini-tab {
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border-hairline);
+  background-color: var(--bg-obsidian);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.whale-mini-tab.active {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background-color: var(--bg-surface-elevated);
+}
+
+.whale-tape-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 640px;
+  overflow-y: auto;
+  background-color: var(--bg-obsidian);
+}
+
+.whale-tape-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  border-left: 2px solid transparent;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.whale-tape-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.whale-tape-row--bull {
+  border-left-color: var(--emerald);
+}
+
+.whale-tape-row--bear {
+  border-left-color: var(--crimson);
+}
+
+.whale-tape-row--big.whale-tape-row--bull {
+  background-color: var(--emerald-dim);
+}
+
+.whale-tape-row--big.whale-tape-row--bear {
+  background-color: var(--crimson-dim);
+}
+
+.whale-tape-left,
+.whale-tape-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.whale-tape-time {
+  color: var(--text-muted);
+  font-size: 9.5px;
+}
+
+.whale-side-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-weight: 700;
+}
+
+.whale-tape-sym {
+  font-size: 11px;
+}
+
+.whale-tape-px {
+  color: var(--text-secondary);
+}
+
+.whale-twap-tag,
+.whale-tier-tag {
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.whale-twap-tag {
+  background-color: var(--bg-obsidian);
+  border: 1px solid var(--border-hairline);
+  color: var(--text-secondary);
+}
+
+.whale-tier-tag {
+  background-color: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  color: var(--amber);
+}
+
+.whale-wallet-tag {
+  color: var(--text-muted);
+  font-size: 9.5px;
+}
+
+.whale-tape-usd {
+  font-size: 11px;
+}
+
+/* Terminal Right-Rail Options Flow Card */
+.whale-term-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whale-term-split {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.whale-term-split-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.whale-term-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.whale-term-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-hairline);
+  background-color: var(--bg-obsidian);
+}
+
+.whale-term-contracts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.whale-term-subhead {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.whale-term-contract-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-obsidian);
+  border: 1px solid var(--border-subtle);
+  font-size: 10px;
+}
+
+.whale-term-prem {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+@media (max-width: 1200px) {
+  .whale-sector-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .whale-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .primary-view-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .whale-hero-head {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+  }
+
+  .whale-tide-strip {
+    padding: 9px 12px;
+  }
+
+  .whale-sector-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 10px;
+  }
+
+  .whale-scan-form {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 16px prevents iOS Safari auto-zoom */
+  .whale-scan-input {
+    height: 36px;
+    font-size: 16px;
+    padding-left: 28px;
+  }
+}
+
+@media (max-width: 640px) {
+  .primary-view-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .whale-sector-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .whale-wallet-tag {
+    display: none;
+  }
+}
+
 
 
