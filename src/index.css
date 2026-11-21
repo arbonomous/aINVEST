@@ -5996,12 +5996,6 @@ body {
   background-color: var(--bg-hover);
 }
 
-@media (max-width: 1280px) {
-  .daily-bread-grid--compact {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 960px) {
   .daily-bread-grid {
     grid-template-columns: 1fr;

@@ -597,17 +597,6 @@ export function LandingPage({
             ))}
           </div>
 
-          {/* Daily Bread — Live AI Day-Trade Call Desk (Compact Preview on Landing Page) */}
-          <DailyBreadDesk
-            compact
-            ctxMap={ctxMap}
-            quoteMap={quoteMap}
-            directoryMap={directoryMap}
-            breakingNews={articles}
-            onSelectTicker={onSelectTicker}
-            onOpenFullDesk={onOpenDailyBread}
-          />
-
           {/* Breaking News Feed Section with Yahoo-Style Category Tabs */}
           <section className="news-stream-panel" aria-label="Latest breaking stock market news">
             <div className="news-stream-header">
@@ -1061,6 +1050,17 @@ export function LandingPage({
           </section>
         </aside>
       </div>
+
+      {/* Daily Bread — Live AI Day-Trade Call Desk (Full-Width Bottom Preview below Media Articles) */}
+      <DailyBreadDesk
+        compact
+        ctxMap={ctxMap}
+        quoteMap={quoteMap}
+        directoryMap={directoryMap}
+        breakingNews={articles}
+        onSelectTicker={onSelectTicker}
+        onOpenFullDesk={onOpenDailyBread}
+      />
     </main>
   );
 }
