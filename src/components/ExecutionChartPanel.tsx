@@ -4,6 +4,7 @@ import type { TickerMeta } from '../data/tickers';
 import { formatRelativeAge, type NewsArticle } from '../lib/newsFeed';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
+import type { ChartGexLevels } from '../lib/whaleFlowEngine';
 import {
   RealtimeCandleChart,
   type ChartTradePlan,
@@ -20,6 +21,7 @@ interface ExecutionChartPanelProps {
   prevDayPx: number | null;
   themeId: ThemeId;
   tradePlan?: ChartTradePlan | null;
+  gexLevels?: ChartGexLevels | null;
   movingNews?: NewsArticle | null;
   onQuoteDiscovered?: (quote: MarketQuote) => void;
 }
@@ -29,6 +31,7 @@ function ExecutionChartPanelComponent({
   prevDayPx,
   themeId,
   tradePlan,
+  gexLevels,
   movingNews,
   onQuoteDiscovered,
 }: ExecutionChartPanelProps) {
@@ -184,6 +187,7 @@ function ExecutionChartPanelComponent({
           expanded={expanded}
           themeId={themeId}
           tradePlan={tradePlan}
+          gexLevels={gexLevels}
           onQuoteDiscovered={onQuoteDiscovered}
           onFallbackToTradingView={() => setFeedMode('tradingview')}
         />
@@ -205,8 +209,8 @@ function ExecutionChartPanelComponent({
         <span>
           {feedMode === 'realtime'
             ? meta.hlCoin
-              ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • AI PLAN'
-              : 'LIVE EXCHANGE FEED • VWAP • EMA 9/21 • AI PLAN'
+              ? '0-DELAY 24/7 WEBSOCKET • VWAP • EMA 9/21 • AI PLAN • GEX WALLS'
+              : 'LIVE EXCHANGE FEED • VWAP • EMA 9/21 • AI PLAN • GEX WALLS'
             : 'TRADINGVIEW INTERACTIVE CHART • FULL DRAWING TOOLS'}
         </span>
       </div>

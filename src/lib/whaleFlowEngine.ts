@@ -28,6 +28,38 @@ export interface OptionContractFlow {
   tags: string[];
 }
 
+export interface GexStrikeLevel {
+  strike: number;
+  callGex: number; // dealer $ gamma exposure per 1% move (positive)
+  putGex: number; // dealer $ gamma exposure per 1% move (negative)
+  netGex: number;
+  callOi: number;
+  putOi: number;
+  callVol: number;
+  putVol: number;
+  callIv: number | null;
+  putIv: number | null;
+}
+
+export interface IvTermPoint {
+  expiration: string;
+  dte: number;
+  atmIv: number; // percentage e.g. 42.5
+}
+
+export interface ChartGexLevels {
+  ticker: string;
+  spotPrice: number;
+  callWall: number | null;
+  putWall: number | null;
+  gammaFlip: number | null;
+  maxPain: number | null;
+  expectedMovePct: number | null;
+  expectedHigh: number | null;
+  expectedLow: number | null;
+  netGammaRegime: TickerOptionsSummary['netGammaRegime'];
+}
+
 export interface TickerOptionsSummary {
   ticker: string;
   spotPrice: number;
@@ -42,6 +74,16 @@ export interface TickerOptionsSummary {
   maxPainStrike: number | null;
   maxPainExpiration: string | null;
   netGammaRegime: 'PIN (+GEX)' | 'VOLATILE (-GEX)' | 'NEUTRAL';
+  netGexUsd: number;
+  callWall: number | null;
+  putWall: number | null;
+  gammaFlip: number | null;
+  expectedMoveUsd: number | null;
+  expectedMovePct: number | null;
+  expectedMoveExp: string | null;
+  ivSkewPct: number | null;
+  gexProfile: GexStrikeLevel[];
+  ivTermStructure: IvTermPoint[];
   unusualContracts: OptionContractFlow[];
   source: 'cboe' | 'none';
 }
@@ -313,10 +355,11 @@ export function analyzeCboeOptionsPayload(
   }
 
   const maxPain = computeMaxPain(parsed);
+  const analytics = computeGexAndIvAnalytics(parsed, spotPrice);
   const unusualContracts = parsed
-    .filter((c) => c.volume >= 25 && c.estPremiumUsd >= 3_000)
+    .filter((c) => c.volume >= 20 && c.estPremiumUsd >= 2_500)
     .sort((a, b) => b.unusualScore - a.unusualScore)
-    .slice(0, 16);
+    .slice(0, 24);
 
   const netPremiumUsd = callPremiumUsd - putPremiumUsd;
   const totalPrem = callPremiumUsd + putPremiumUsd;
@@ -347,8 +390,328 @@ export function analyzeCboeOptionsPayload(
     maxPainStrike: maxPain.strike,
     maxPainExpiration: maxPain.expiration,
     netGammaRegime,
+    netGexUsd: analytics.netGexUsd,
+    callWall: analytics.callWall,
+    putWall: analytics.putWall,
+    gammaFlip: analytics.gammaFlip,
+    expectedMoveUsd: analytics.expectedMoveUsd,
+    expectedMovePct: analytics.expectedMovePct,
+    expectedMoveExp: analytics.expectedMoveExp,
+    ivSkewPct: analytics.ivSkewPct,
+    gexProfile: analytics.gexProfile,
+    ivTermStructure: analytics.ivTermStructure,
     unusualContracts,
     source: 'cboe',
+  };
+}
+
+function computeGexAndIvAnalytics(
+  contracts: OptionContractFlow[],
+  spotPrice: number,
+): {
+  netGexUsd: number;
+  callWall: number | null;
+  putWall: number | null;
+  gammaFlip: number | null;
+  expectedMoveUsd: number | null;
+  expectedMovePct: number | null;
+  expectedMoveExp: string | null;
+  ivSkewPct: number | null;
+  gexProfile: GexStrikeLevel[];
+  ivTermStructure: IvTermPoint[];
+} {
+  if (contracts.length === 0 || spotPrice <= 0) {
+    return {
+      netGexUsd: 0,
+      callWall: null,
+      putWall: null,
+      gammaFlip: null,
+      expectedMoveUsd: null,
+      expectedMovePct: null,
+      expectedMoveExp: null,
+      ivSkewPct: null,
+      gexProfile: [],
+      ivTermStructure: [],
+    };
+  }
+
+  // Dealer $ GEX per 1% spot move: gamma * OI * 100 * spot^2 * 0.01
+  const gexScale = spotPrice * spotPrice;
+  const byStrike = new Map<
+    number,
+    {
+      strike: number;
+      callGex: number;
+      putGex: number;
+      callOi: number;
+      putOi: number;
+      callVol: number;
+      putVol: number;
+      callIvSum: number;
+      callIvCnt: number;
+      putIvSum: number;
+      putIvCnt: number;
+    }
+  >();
+
+  let totalNetGexUsd = 0;
+
+  for (const c of contracts) {
+    // Focus GEX aggregation on nearer expirations (<= 90 DTE) where dealer hedging dominates
+    const inGexWindow = c.dte <= 90;
+    const rawGamma =
+      c.gamma !== null && c.gamma > 0
+        ? c.gamma
+        : c.openInterest > 0
+          ? 0.015 / Math.max(1, Math.abs(c.strike - spotPrice) / spotPrice * 18 + 1)
+          : 0;
+    const gexUsd = inGexWindow ? rawGamma * c.openInterest * gexScale : 0;
+
+    const bucket = byStrike.get(c.strike) ?? {
+      strike: c.strike,
+      callGex: 0,
+      putGex: 0,
+      callOi: 0,
+      putOi: 0,
+      callVol: 0,
+      putVol: 0,
+      callIvSum: 0,
+      callIvCnt: 0,
+      putIvSum: 0,
+      putIvCnt: 0,
+    };
+
+    if (c.type === 'CALL') {
+      bucket.callGex += gexUsd;
+      bucket.callOi += c.openInterest;
+      bucket.callVol += c.volume;
+      totalNetGexUsd += gexUsd;
+      if (c.iv !== null && c.dte <= 45) {
+        bucket.callIvSum += c.iv;
+        bucket.callIvCnt += 1;
+      }
+    } else {
+      bucket.putGex -= gexUsd;
+      bucket.putOi += c.openInterest;
+      bucket.putVol += c.volume;
+      totalNetGexUsd -= gexUsd;
+      if (c.iv !== null && c.dte <= 45) {
+        bucket.putIvSum += c.iv;
+        bucket.putIvCnt += 1;
+      }
+    }
+    byStrike.set(c.strike, bucket);
+  }
+
+  const allLevels: GexStrikeLevel[] = Array.from(byStrike.values())
+    .sort((a, b) => a.strike - b.strike)
+    .map((b) => ({
+      strike: b.strike,
+      callGex: Math.round(b.callGex),
+      putGex: Math.round(b.putGex),
+      netGex: Math.round(b.callGex + b.putGex),
+      callOi: b.callOi,
+      putOi: b.putOi,
+      callVol: b.callVol,
+      putVol: b.putVol,
+      callIv:
+        b.callIvCnt > 0 ? Number((b.callIvSum / b.callIvCnt).toFixed(1)) : null,
+      putIv:
+        b.putIvCnt > 0 ? Number((b.putIvSum / b.putIvCnt).toFixed(1)) : null,
+    }));
+
+  // Call Wall (highest call GEX / OI at or above spot*0.985) & Put Wall (deepest put GEX / OI at or below spot*1.015)
+  const nearWindow = allLevels.filter(
+    (l) => l.strike >= spotPrice * 0.72 && l.strike <= spotPrice * 1.28,
+  );
+  const pool = nearWindow.length >= 4 ? nearWindow : allLevels;
+
+  const callCandidates = pool.filter((l) => l.strike >= spotPrice * 0.985);
+  const callWallLevel =
+    (callCandidates.length > 0 ? callCandidates : pool).reduce<GexStrikeLevel | null>(
+      (best, cur) => {
+        if (!best) return cur;
+        const curScore = cur.callGex > 0 ? cur.callGex : cur.callOi;
+        const bestScore = best.callGex > 0 ? best.callGex : best.callOi;
+        return curScore > bestScore ? cur : best;
+      },
+      null,
+    );
+
+  const putCandidates = pool.filter((l) => l.strike <= spotPrice * 1.015);
+  const putWallLevel =
+    (putCandidates.length > 0 ? putCandidates : pool).reduce<GexStrikeLevel | null>(
+      (best, cur) => {
+        if (!best) return cur;
+        const curScore = Math.abs(cur.putGex) > 0 ? Math.abs(cur.putGex) : cur.putOi;
+        const bestScore = Math.abs(best.putGex) > 0 ? Math.abs(best.putGex) : best.putOi;
+        return curScore > bestScore ? cur : best;
+      },
+      null,
+    );
+
+  // Zero-Gamma Flip: strike closest to spot where net GEX changes sign across sorted strikes
+  let gammaFlip: number | null = null;
+  let bestFlipDist = Number.POSITIVE_INFINITY;
+  for (let i = 1; i < pool.length; i += 1) {
+    const prev = pool[i - 1];
+    const curr = pool[i];
+    if (
+      (prev.netGex < 0 && curr.netGex > 0) ||
+      (prev.netGex > 0 && curr.netGex < 0)
+    ) {
+      const denom = Math.abs(prev.netGex) + Math.abs(curr.netGex);
+      const frac = denom > 0 ? Math.abs(prev.netGex) / denom : 0.5;
+      const cross = Number(
+        (prev.strike + (curr.strike - prev.strike) * frac).toFixed(2),
+      );
+      const dist = Math.abs(cross - spotPrice);
+      if (dist < bestFlipDist) {
+        bestFlipDist = dist;
+        gammaFlip = cross;
+      }
+    }
+  }
+
+  // Pick up to 16 most active strikes centered around spot (±15% preferred)
+  const localStrikes = allLevels.filter(
+    (l) => l.strike >= spotPrice * 0.85 && l.strike <= spotPrice * 1.15,
+  );
+  const rankedStrikes = (localStrikes.length >= 6 ? localStrikes : pool)
+    .slice()
+    .sort(
+      (a, b) =>
+        Math.abs(b.callGex) +
+        Math.abs(b.putGex) +
+        (b.callOi + b.putOi) * 10 -
+        (Math.abs(a.callGex) + Math.abs(a.putGex) + (a.callOi + a.putOi) * 10),
+    )
+    .slice(0, 16)
+    .sort((a, b) => b.strike - a.strike); // highest strike at top
+
+  // Expected Move (±1σ ≈ 0.85 * ATM Straddle) & IV Term Structure (nearest 5 expirations)
+  const byExp = new Map<string, OptionContractFlow[]>();
+  for (const c of contracts) {
+    const list = byExp.get(c.expiration) ?? [];
+    list.push(c);
+    byExp.set(c.expiration, list);
+  }
+  const sortedExps = Array.from(byExp.keys()).sort();
+
+  let expectedMoveUsd: number | null = null;
+  let expectedMovePct: number | null = null;
+  let expectedMoveExp: string | null = null;
+  const ivTermStructure: IvTermPoint[] = [];
+
+  for (const exp of sortedExps) {
+    const list = byExp.get(exp) ?? [];
+    if (list.length === 0) continue;
+
+    // Find strike closest to spot that has both CALL and PUT
+    const calls = list.filter((c) => c.type === 'CALL' && (c.mark > 0 || c.iv !== null));
+    const puts = list.filter((c) => c.type === 'PUT' && (c.mark > 0 || c.iv !== null));
+    if (calls.length === 0 || puts.length === 0) continue;
+
+    const atmCall = calls.reduce((best, cur) =>
+      Math.abs(cur.strike - spotPrice) < Math.abs(best.strike - spotPrice)
+        ? cur
+        : best,
+    );
+    const atmPut = puts.reduce((best, cur) =>
+      Math.abs(cur.strike - atmCall.strike) < Math.abs(best.strike - atmCall.strike)
+        ? cur
+        : best,
+    );
+
+    if (
+      expectedMoveUsd === null &&
+      atmCall.mark > 0 &&
+      atmPut.mark > 0 &&
+      Math.abs(atmCall.strike - spotPrice) / spotPrice <= 0.08
+    ) {
+      const straddle = atmCall.mark + atmPut.mark;
+      const move = Number((straddle * 0.85).toFixed(2));
+      if (move > 0) {
+        expectedMoveUsd = move;
+        expectedMovePct = Number(((move / spotPrice) * 100).toFixed(1));
+        expectedMoveExp = exp;
+      }
+    }
+
+    const ivVals = [atmCall.iv, atmPut.iv].filter(
+      (v): v is number => v !== null && v > 0,
+    );
+    if (ivVals.length > 0 && ivTermStructure.length < 5) {
+      const avgIv = ivVals.reduce((a, b) => a + b, 0) / ivVals.length;
+      ivTermStructure.push({
+        expiration: exp,
+        dte: atmCall.dte,
+        atmIv: Number(avgIv.toFixed(1)),
+      });
+    }
+  }
+
+  // IV Skew: ~5% OTM Put IV minus ~5% OTM Call IV
+  const targetPutStrike = spotPrice * 0.95;
+  const targetCallStrike = spotPrice * 1.05;
+  const otmPutIvLevel = pool
+    .filter((l) => l.putIv !== null && l.strike <= spotPrice)
+    .sort(
+      (a, b) =>
+        Math.abs(a.strike - targetPutStrike) - Math.abs(b.strike - targetPutStrike),
+    )[0];
+  const otmCallIvLevel = pool
+    .filter((l) => l.callIv !== null && l.strike >= spotPrice)
+    .sort(
+      (a, b) =>
+        Math.abs(a.strike - targetCallStrike) - Math.abs(b.strike - targetCallStrike),
+    )[0];
+
+  const ivSkewPct =
+    otmPutIvLevel?.putIv !== null &&
+    otmPutIvLevel?.putIv !== undefined &&
+    otmCallIvLevel?.callIv !== null &&
+    otmCallIvLevel?.callIv !== undefined
+      ? Number((otmPutIvLevel.putIv - otmCallIvLevel.callIv).toFixed(1))
+      : null;
+
+  return {
+    netGexUsd: Math.round(totalNetGexUsd),
+    callWall: callWallLevel?.strike ?? null,
+    putWall: putWallLevel?.strike ?? null,
+    gammaFlip,
+    expectedMoveUsd,
+    expectedMovePct,
+    expectedMoveExp,
+    ivSkewPct,
+    gexProfile: rankedStrikes,
+    ivTermStructure,
+  };
+}
+
+export function extractChartGexLevels(
+  summary: TickerOptionsSummary | null,
+): ChartGexLevels | null {
+  if (!summary || summary.spotPrice <= 0) return null;
+  const expectedHigh =
+    summary.expectedMoveUsd !== null
+      ? Number((summary.spotPrice + summary.expectedMoveUsd).toFixed(2))
+      : null;
+  const expectedLow =
+    summary.expectedMoveUsd !== null
+      ? Number(Math.max(0.01, summary.spotPrice - summary.expectedMoveUsd).toFixed(2))
+      : null;
+  return {
+    ticker: summary.ticker,
+    spotPrice: summary.spotPrice,
+    callWall: summary.callWall,
+    putWall: summary.putWall,
+    gammaFlip: summary.gammaFlip,
+    maxPain: summary.maxPainStrike,
+    expectedMovePct: summary.expectedMovePct,
+    expectedHigh,
+    expectedLow,
+    netGammaRegime: summary.netGammaRegime,
   };
 }
 

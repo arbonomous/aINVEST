@@ -14,6 +14,7 @@ import {
 } from './components/MarketExplorerModal';
 import { OvernightRadarPanel } from './components/OvernightRadarPanel';
 import { OptionsFlowTickerCard } from './components/OptionsFlowTickerCard';
+import { OptionsPayoffModal } from './components/OptionsPayoffModal';
 import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
@@ -23,6 +24,10 @@ import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
 import { WhaleFlowDesk } from './components/WhaleFlowDesk';
 import { resolveTickerMeta } from './data/tickers';
+import type {
+  ChartGexLevels,
+  OptionContractFlow,
+} from './lib/whaleFlowEngine';
 import type { DailyBreadCall } from './lib/dailyBreadEngine';
 import {
   fetchAllHyperliquidHip3CtxMap,
@@ -157,6 +162,12 @@ export function App() {
     loadTrackedTrades(),
   );
   const [activeTradePlan, setActiveTradePlan] = useState<ChartTradePlan | null>(
+    null,
+  );
+  const [activeGexLevels, setActiveGexLevels] = useState<ChartGexLevels | null>(
+    null,
+  );
+  const [simContract, setSimContract] = useState<OptionContractFlow | null>(
     null,
   );
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>(() =>
@@ -832,6 +843,8 @@ export function App() {
             quoteMap={quoteMap}
             directoryMap={directoryMap}
             onSelectTicker={handleSelectTicker}
+            onSimulateContract={setSimContract}
+            onArmAlert={handleArmAlert}
           />
         </main>
       ) : activeView === 'daily-bread' ? (
@@ -891,6 +904,7 @@ export function App() {
                 prevDayPx={activeQuote?.prevClose ?? null}
                 themeId={themeId}
                 tradePlan={activeTradePlan}
+                gexLevels={activeGexLevels}
                 movingNews={activeMovingNews}
                 onQuoteDiscovered={handleLiveQuoteUpdate}
               />
@@ -918,11 +932,13 @@ export function App() {
                 onSelectPriceLevel={handleSelectPriceLevel}
               />
 
-              {/* Panel B — Unusual Options Flow, Max Pain & Gamma Regime */}
+              {/* Panel B — Unusual Options Flow, GEX Walls & Max Pain */}
               <OptionsFlowTickerCard
                 meta={meta}
                 livePrice={activeQuote?.price ?? null}
                 onSelectPriceLevel={handleSelectPriceLevel}
+                onOptionsLevelsUpdate={setActiveGexLevels}
+                onSimulateContract={setSimContract}
                 onArmAlert={handleArmAlert}
               />
 
@@ -984,6 +1000,16 @@ export function App() {
           onClearTriggered={handleClearTriggeredAlerts}
           onSelectTicker={handleSelectTicker}
           onClose={() => setAlertsDrawerOpen(false)}
+        />
+      )}
+
+      {/* 1-Click Black-Scholes Options P&L Heatmap & Simulator Modal */}
+      {simContract && (
+        <OptionsPayoffModal
+          key={simContract.id}
+          contract={simContract}
+          onClose={() => setSimContract(null)}
+          onCopySuccess={showToast}
         />
       )}
 

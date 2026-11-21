@@ -1,8 +1,11 @@
 import { memo, useEffect, useRef, useState } from 'react';
-import { BellPlus, Waves } from 'lucide-react';
+import { BellPlus, Calculator, Waves } from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
 import {
+  extractChartGexLevels,
   fetchTickerOptionsFlow,
+  type ChartGexLevels,
+  type OptionContractFlow,
   type TickerOptionsSummary,
 } from '../lib/whaleFlowEngine';
 
@@ -10,6 +13,8 @@ interface OptionsFlowTickerCardProps {
   meta: TickerMeta;
   livePrice: number | null;
   onSelectPriceLevel: (price: number) => void;
+  onOptionsLevelsUpdate?: (levels: ChartGexLevels | null) => void;
+  onSimulateContract?: (contract: OptionContractFlow) => void;
   onArmAlert?: (params: {
     ticker: string;
     targetPrice: number;
@@ -30,6 +35,8 @@ function OptionsFlowTickerCardComponent({
   meta,
   livePrice,
   onSelectPriceLevel,
+  onOptionsLevelsUpdate,
+  onSimulateContract,
   onArmAlert,
 }: OptionsFlowTickerCardProps) {
   const [state, setState] = useState<{
@@ -38,13 +45,21 @@ function OptionsFlowTickerCardComponent({
     done: boolean;
   } | null>(null);
   const livePriceRef = useRef<number | null>(livePrice);
+  const onLevelsRef = useRef(onOptionsLevelsUpdate);
 
   useEffect(() => {
     livePriceRef.current = livePrice;
   }, [livePrice]);
 
   useEffect(() => {
-    if (meta.ipoStatus === 'upcoming') return;
+    onLevelsRef.current = onOptionsLevelsUpdate;
+  }, [onOptionsLevelsUpdate]);
+
+  useEffect(() => {
+    if (meta.ipoStatus === 'upcoming') {
+      onLevelsRef.current?.(null);
+      return;
+    }
 
     let active = true;
     const controller = new AbortController();
@@ -58,6 +73,7 @@ function OptionsFlowTickerCardComponent({
       );
       if (!active || controller.signal.aborted) return;
       setState({ ticker: meta.ticker, summary: res, done: true });
+      onLevelsRef.current?.(extractChartGexLevels(res));
     };
 
     void load();
@@ -82,7 +98,7 @@ function OptionsFlowTickerCardComponent({
   return (
     <section
       className="terminal-card"
-      aria-label={`Unusual Options Flow and Max Pain for ${meta.ticker}`}
+      aria-label={`Unusual Options Flow, GEX Walls and Max Pain for ${meta.ticker}`}
     >
       <div className="panel-header">
         <div className="panel-title-group">
@@ -109,7 +125,7 @@ function OptionsFlowTickerCardComponent({
       <div className="panel-body whale-term-body">
         {loading ? (
           <div className="ta-loading-state mono">
-            Scanning CBOE options chain &amp; Max Pain for {meta.ticker}…
+            Scanning CBOE options chain, GEX Walls &amp; Max Pain for {meta.ticker}…
           </div>
         ) : !summary ? (
           <div className="ta-loading-state mono">
@@ -141,8 +157,78 @@ function OptionsFlowTickerCardComponent({
               </div>
             </div>
 
-            {/* Key Metrics Strip: Max Pain + Gamma Regime + Call/Put Volume */}
+            {/* Dealer GEX Walls & Expected Move Grid */}
             <div className="whale-term-metrics mono">
+              <div className="bread-term-lvl-cell">
+                <button
+                  type="button"
+                  className="bread-term-lvl-btn"
+                  disabled={!summary.callWall}
+                  onClick={() => {
+                    if (summary.callWall) onSelectPriceLevel(summary.callWall);
+                  }}
+                  title="Dealer Call Wall (resistance) — click to load into Calculator"
+                >
+                  <span className="bread-lvl-label">CALL WALL</span>
+                  <span className="bread-lvl-val text-emerald">
+                    {summary.callWall ? `$${summary.callWall}` : '—'}
+                  </span>
+                </button>
+                {summary.callWall && onArmAlert && (
+                  <button
+                    type="button"
+                    className="bread-lvl-bell-btn"
+                    onClick={() =>
+                      onArmAlert({
+                        ticker: meta.ticker,
+                        targetPrice: summary.callWall!,
+                        currentPrice: livePrice ?? summary.spotPrice,
+                        label: 'GEX Call Wall',
+                      })
+                    }
+                    title={`Arm alert at Call Wall $${summary.callWall}`}
+                    aria-label={`Arm Call Wall alert for ${meta.ticker}`}
+                  >
+                    <BellPlus size={11} />
+                  </button>
+                )}
+              </div>
+
+              <div className="bread-term-lvl-cell">
+                <button
+                  type="button"
+                  className="bread-term-lvl-btn"
+                  disabled={!summary.putWall}
+                  onClick={() => {
+                    if (summary.putWall) onSelectPriceLevel(summary.putWall);
+                  }}
+                  title="Dealer Put Wall (support) — click to load into Calculator"
+                >
+                  <span className="bread-lvl-label">PUT WALL</span>
+                  <span className="bread-lvl-val text-crimson">
+                    {summary.putWall ? `$${summary.putWall}` : '—'}
+                  </span>
+                </button>
+                {summary.putWall && onArmAlert && (
+                  <button
+                    type="button"
+                    className="bread-lvl-bell-btn"
+                    onClick={() =>
+                      onArmAlert({
+                        ticker: meta.ticker,
+                        targetPrice: summary.putWall!,
+                        currentPrice: livePrice ?? summary.spotPrice,
+                        label: 'GEX Put Wall',
+                      })
+                    }
+                    title={`Arm alert at Put Wall $${summary.putWall}`}
+                    aria-label={`Arm Put Wall alert for ${meta.ticker}`}
+                  >
+                    <BellPlus size={11} />
+                  </button>
+                )}
+              </div>
+
               <div className="bread-term-lvl-cell">
                 <button
                   type="button"
@@ -183,7 +269,9 @@ function OptionsFlowTickerCardComponent({
               </div>
 
               <div className="whale-term-stat-box">
-                <span className="bread-lvl-label">GAMMA REGIME</span>
+                <span className="bread-lvl-label">
+                  {summary.gammaFlip ? `FLIP $${summary.gammaFlip}` : 'GAMMA REGIME'}
+                </span>
                 <span
                   className={`bread-lvl-val ${
                     summary.netGammaRegime === 'PIN (+GEX)'
@@ -198,10 +286,24 @@ function OptionsFlowTickerCardComponent({
               </div>
             </div>
 
-            {/* Top 4 Unusual Contracts */}
+            {summary.expectedMoveUsd !== null && summary.expectedMovePct !== null && (
+              <div className="whale-term-em-strip mono">
+                <span className="text-muted">
+                  ±1σ EXP MOVE ({summary.expectedMoveExp?.slice(5) ?? 'WKLY'})
+                </span>
+                <strong className="gex-cyan">
+                  ±${summary.expectedMoveUsd.toFixed(2)} (±{summary.expectedMovePct}%)
+                </strong>
+              </div>
+            )}
+
+            {/* Top 4 Unusual Contracts — click SIM to launch Black-Scholes P&L Heatmap */}
             {summary.unusualContracts.length > 0 && (
               <div className="whale-term-contracts mono">
-                <div className="whale-term-subhead">TOP UNUSUAL CONTRACTS</div>
+                <div className="whale-term-subhead">
+                  <span>TOP UNUSUAL CONTRACTS</span>
+                  <span className="text-muted">CLICK SIM FOR P&amp;L</span>
+                </div>
                 {summary.unusualContracts.slice(0, 4).map((c) => {
                   const isCall = c.type === 'CALL';
                   return (
@@ -221,8 +323,19 @@ function OptionsFlowTickerCardComponent({
                           c.volOiRatio >= 2 ? 'text-amber' : 'text-muted'
                         }
                       >
-                        {c.volOiRatio.toFixed(1)}× V/OI
+                        {c.volOiRatio.toFixed(1)}×
                       </span>
+                      {onSimulateContract && (
+                        <button
+                          type="button"
+                          className="whale-sim-btn"
+                          onClick={() => onSimulateContract(c)}
+                          title={`Simulate P&L heatmap for ${c.ticker} ${c.contract}`}
+                        >
+                          <Calculator size={10} />
+                          <span>SIM</span>
+                        </button>
+                      )}
                     </div>
                   );
                 })}

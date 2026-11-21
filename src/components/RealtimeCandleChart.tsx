@@ -27,6 +27,7 @@ import {
   type FeedSource,
   type MarketQuote,
 } from '../lib/universalFeed';
+import type { ChartGexLevels } from '../lib/whaleFlowEngine';
 
 export interface ChartTradePlan {
   ticker: string;
@@ -44,6 +45,7 @@ interface RealtimeCandleChartProps {
   expanded: boolean;
   themeId: ThemeId;
   tradePlan?: ChartTradePlan | null;
+  gexLevels?: ChartGexLevels | null;
   onQuoteDiscovered?: (quote: MarketQuote) => void;
   onFallbackToTradingView: () => void;
 }
@@ -77,6 +79,7 @@ function RealtimeCandleChartComponent({
   expanded,
   themeId,
   tradePlan,
+  gexLevels,
   onQuoteDiscovered,
   onFallbackToTradingView,
 }: RealtimeCandleChartProps) {
@@ -86,6 +89,7 @@ function RealtimeCandleChartComponent({
   const [showVwap, setShowVwap] = useState(true);
   const [showEma, setShowEma] = useState(true);
   const [showAiPlan, setShowAiPlan] = useState(true);
+  const [showGexWalls, setShowGexWalls] = useState(true);
   const [feedSource, setFeedSource] = useState<FeedSource>('none');
   const [wsLive, setWsLive] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -99,6 +103,7 @@ function RealtimeCandleChartComponent({
   const ema9SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const ema21SeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const aiPriceLinesRef = useRef<IPriceLine[]>([]);
+  const gexPriceLinesRef = useRef<IPriceLine[]>([]);
   const showVwapRef = useRef(showVwap);
   const showEmaRef = useRef(showEma);
   const paletteRef = useRef(THEME_MAP[themeId]);
@@ -518,6 +523,7 @@ function RealtimeCandleChartComponent({
       ema9SeriesRef.current = null;
       ema21SeriesRef.current = null;
       aiPriceLinesRef.current = [];
+      gexPriceLinesRef.current = [];
       chart.remove();
     };
   }, [meta.ticker, meta.hlCoin, meta.ipoStatus, interval]);
@@ -594,6 +600,89 @@ function RealtimeCandleChartComponent({
       );
   }, [showAiPlan, planSig, activePlan, themeId, loading]);
 
+  // Overlay Dealer GEX Walls (Call Wall, Put Wall, Gamma Flip, Max Pain, ±1σ Expected Move)
+  const activeGex =
+    gexLevels && gexLevels.ticker === meta.ticker ? gexLevels : null;
+  const gexSig = activeGex
+    ? `${activeGex.ticker}:${activeGex.callWall}:${activeGex.putWall}:${activeGex.gammaFlip}:${activeGex.maxPain}:${activeGex.expectedHigh}:${activeGex.expectedLow}`
+    : '';
+
+  useEffect(() => {
+    const series = candleSeriesRef.current;
+    if (!series) return;
+
+    for (const line of gexPriceLinesRef.current) {
+      try {
+        series.removePriceLine(line);
+      } catch {
+        // Ignore stale line
+      }
+    }
+    gexPriceLinesRef.current = [];
+
+    if (!showGexWalls || !activeGex || loading) return;
+
+    const p = THEME_MAP[themeId];
+    const specs: Array<{
+      price: number | null;
+      color: string;
+      lineStyle: LineStyle;
+      title: string;
+    }> = [
+      {
+        price: activeGex.callWall,
+        color: p.bull,
+        lineStyle: LineStyle.LargeDashed,
+        title: 'GEX CALL WALL',
+      },
+      {
+        price: activeGex.putWall,
+        color: p.bear,
+        lineStyle: LineStyle.LargeDashed,
+        title: 'GEX PUT WALL',
+      },
+      {
+        price: activeGex.gammaFlip,
+        color: p.amber,
+        lineStyle: LineStyle.SparseDotted,
+        title: 'GAMMA FLIP',
+      },
+      {
+        price: activeGex.maxPain,
+        color: '#a78bfa',
+        lineStyle: LineStyle.Dotted,
+        title: 'MAX PAIN',
+      },
+      {
+        price: activeGex.expectedHigh,
+        color: '#38bdf8',
+        lineStyle: LineStyle.SparseDotted,
+        title: '+1σ MOVE',
+      },
+      {
+        price: activeGex.expectedLow,
+        color: '#38bdf8',
+        lineStyle: LineStyle.SparseDotted,
+        title: '-1σ MOVE',
+      },
+    ];
+
+    gexPriceLinesRef.current = specs
+      .filter((s): s is { price: number; color: string; lineStyle: LineStyle; title: string } =>
+        s.price !== null && Number.isFinite(s.price) && s.price > 0,
+      )
+      .map((s) =>
+        series.createPriceLine({
+          price: s.price,
+          color: s.color,
+          lineWidth: 1,
+          lineStyle: s.lineStyle,
+          axisLabelVisible: true,
+          title: s.title,
+        }),
+      );
+  }, [showGexWalls, gexSig, activeGex, themeId, loading]);
+
   const isUp = readout ? readout.close >= readout.open : true;
 
   return (
@@ -645,6 +734,16 @@ function RealtimeCandleChartComponent({
               title="Toggle Daily Bread AI Entry / TP1 / TP2 / Stop levels on chart"
             >
               AI PLAN
+            </button>
+          )}
+          {activeGex && (
+            <button
+              type="button"
+              className={`rt-overlay-pill${showGexWalls ? ' rt-overlay-pill--violet' : ''}`}
+              onClick={() => setShowGexWalls((v) => !v)}
+              title="Toggle Dealer Call Wall, Put Wall, Gamma Flip, Max Pain & ±1σ Expected Move"
+            >
+              GEX WALLS
             </button>
           )}
 

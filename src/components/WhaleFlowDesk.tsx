@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  Calculator,
   Flame,
   Radio,
   RefreshCw,
   Search,
+  Volume2,
+  VolumeX,
   Waves,
 } from 'lucide-react';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
+import { playAlertChime } from '../lib/priceAlerts';
 import type { MarketQuote } from '../lib/universalFeed';
 import {
   HyperliquidWhaleTapeStream,
@@ -23,16 +27,35 @@ import {
   type TickerOptionsSummary,
   type WhaleTapePrint,
 } from '../lib/whaleFlowEngine';
+import { GexProfilePanel } from './GexProfilePanel';
 
-type UoaFilter = 'ALL' | 'CALL' | 'PUT' | 'VOL_OI' | 'MEGA';
+type UoaFilter =
+  | 'ALL'
+  | 'CALL'
+  | 'PUT'
+  | 'LOTTO_0_7D'
+  | 'LEAPS'
+  | 'VOL_OI'
+  | 'MEGA';
+type DteBucket = 'ALL' | '0_7' | '8_30' | '31_90' | '90_PLUS';
+type PremBucket = 0 | 25000 | 100000 | 250000 | 1000000;
+type MoneynessFilter = 'ALL' | 'OTM' | 'ATM' | 'ITM';
 type TapeMinUsd = 0 | 5000 | 25000 | 100000;
 type TapeSideFilter = 'ALL' | 'BUY' | 'SELL';
+type ChimeThreshold = 0 | 50000 | 100000 | 250000;
 
 interface WhaleFlowDeskProps {
   ctxMap: Record<string, HlAssetCtx>;
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
   onSelectTicker: (ticker: string) => void;
+  onSimulateContract?: (contract: OptionContractFlow) => void;
+  onArmAlert?: (params: {
+    ticker: string;
+    targetPrice: number;
+    currentPrice?: number | null;
+    label: string;
+  }) => void;
 }
 
 const TAPE_PRIORITY_TICKERS = [
@@ -46,6 +69,8 @@ const TAPE_PRIORITY_TICKERS = [
   'XYZ100',
   'SP500',
 ];
+
+const CHIME_STEPS: ChimeThreshold[] = [0, 50000, 100000, 250000];
 
 function fmtUsd(n: number): string {
   const abs = Math.abs(n);
@@ -74,8 +99,14 @@ export function WhaleFlowDesk({
   quoteMap,
   directoryMap,
   onSelectTicker,
+  onSimulateContract,
+  onArmAlert,
 }: WhaleFlowDeskProps) {
   const [uoaFilter, setUoaFilter] = useState<UoaFilter>('ALL');
+  const [dteBucket, setDteBucket] = useState<DteBucket>('ALL');
+  const [minPrem, setMinPrem] = useState<PremBucket>(0);
+  const [moneynessFilter, setMoneynessFilter] = useState<MoneynessFilter>('ALL');
+  const [gexTicker, setGexTicker] = useState<string>('');
   const [customInput, setCustomInput] = useState<string>('');
   const [scanningCustom, setScanningCustom] = useState<boolean>(false);
   const [customSummary, setCustomSummary] = useState<TickerOptionsSummary | null>(
@@ -88,11 +119,19 @@ export function WhaleFlowDesk({
   } | null>(null);
   const [refreshingFlow, setRefreshingFlow] = useState<boolean>(false);
 
-  // Live 24/7 Hyperliquid Whale Print Tape
+  // Live 24/7 Hyperliquid Whale Print Tape + Live Chime Ping
   const [tapePrints, setTapePrints] = useState<WhaleTapePrint[]>([]);
   const [tapeWsLive, setTapeWsLive] = useState<boolean>(false);
   const [tapeMinUsd, setTapeMinUsd] = useState<TapeMinUsd>(0);
   const [tapeSide, setTapeSide] = useState<TapeSideFilter>('ALL');
+  const [chimeThreshold, setChimeThreshold] = useState<ChimeThreshold>(0);
+  const [lastWhalePing, setLastWhalePing] = useState<WhaleTapePrint | null>(null);
+  const chimeThresholdRef = useRef<ChimeThreshold>(0);
+  const lastChimeMsRef = useRef<number>(0);
+
+  useEffect(() => {
+    chimeThresholdRef.current = chimeThreshold;
+  }, [chimeThreshold]);
 
   const watchedCoinsKey = useMemo(() => {
     const coins: string[] = [];
@@ -101,7 +140,6 @@ export function WhaleFlowDesk({
       if (c) coins.push(c);
     }
     if (coins.length === 0) {
-      // Fallback to top 6 discovered HIP-3 coins by 24h volume
       const top = Object.values(ctxMap)
         .sort((a, b) => b.dayNtlVlm - a.dayNtlVlm)
         .slice(0, 6)
@@ -169,6 +207,23 @@ export function WhaleFlowDesk({
       coins,
       (incoming) => {
         if (!active) return;
+
+        // Fire Whale Sound Chime when live print crosses user threshold
+        const minChime = chimeThresholdRef.current;
+        if (minChime > 0) {
+          const biggest = incoming
+            .filter((p) => p.notionalUsd >= minChime)
+            .sort((a, b) => b.notionalUsd - a.notionalUsd)[0];
+          if (biggest) {
+            setLastWhalePing(biggest);
+            const now = Date.now();
+            if (now - lastChimeMsRef.current >= 4000) {
+              lastChimeMsRef.current = now;
+              playAlertChime();
+            }
+          }
+        }
+
         setTapePrints((prev) => {
           const seen = new Set<string>();
           const merged: WhaleTapePrint[] = [];
@@ -222,11 +277,34 @@ export function WhaleFlowDesk({
       const res = await fetchTickerOptionsFlow(clean, null, true);
       if (res) {
         setCustomSummary(res);
+        setGexTicker(res.ticker);
         setCustomInput('');
       }
     } finally {
       setScanningCustom(false);
     }
+  };
+
+  const handleCycleChime = () => {
+    const idx = CHIME_STEPS.indexOf(chimeThreshold);
+    const next = CHIME_STEPS[(idx + 1) % CHIME_STEPS.length];
+    setChimeThreshold(next);
+    if (next > 0) {
+      playAlertChime();
+    }
+  };
+
+  const hasGranularFilters =
+    uoaFilter !== 'ALL' ||
+    dteBucket !== 'ALL' ||
+    minPrem !== 0 ||
+    moneynessFilter !== 'ALL';
+
+  const handleResetFilters = () => {
+    setUoaFilter('ALL');
+    setDteBucket('ALL');
+    setMinPrem(0);
+    setMoneynessFilter('ALL');
   };
 
   const allSummaries = useMemo(() => {
@@ -247,48 +325,66 @@ export function WhaleFlowDesk({
     const base = flowState?.hotContracts ?? [];
     const combined = customSummary
       ? [
-          ...customSummary.unusualContracts.slice(0, 8),
+          ...customSummary.unusualContracts.slice(0, 12),
           ...base.filter((c) => c.ticker !== customSummary.ticker),
         ]
       : base;
 
     return combined.filter((c) => {
-      if (uoaFilter === 'CALL') return c.type === 'CALL';
-      if (uoaFilter === 'PUT') return c.type === 'PUT';
-      if (uoaFilter === 'VOL_OI') return c.volOiRatio >= 1.5;
-      if (uoaFilter === 'MEGA') return c.estPremiumUsd >= 100_000;
+      if (uoaFilter === 'CALL' && c.type !== 'CALL') return false;
+      if (uoaFilter === 'PUT' && c.type !== 'PUT') return false;
+      if (uoaFilter === 'LOTTO_0_7D' && c.dte > 7) return false;
+      if (uoaFilter === 'LEAPS' && c.dte < 90) return false;
+      if (uoaFilter === 'VOL_OI' && c.volOiRatio < 1.5) return false;
+      if (uoaFilter === 'MEGA' && c.estPremiumUsd < 250_000) return false;
+
+      if (dteBucket === '0_7' && c.dte > 7) return false;
+      if (dteBucket === '8_30' && (c.dte < 8 || c.dte > 30)) return false;
+      if (dteBucket === '31_90' && (c.dte < 31 || c.dte > 90)) return false;
+      if (dteBucket === '90_PLUS' && c.dte <= 90) return false;
+
+      if (minPrem > 0 && c.estPremiumUsd < minPrem) return false;
+      if (moneynessFilter !== 'ALL' && c.moneyness !== moneynessFilter) {
+        return false;
+      }
       return true;
     });
-  }, [flowState, customSummary, uoaFilter]);
+  }, [flowState, customSummary, uoaFilter, dteBucket, minPrem, moneynessFilter]);
 
-  const { filteredTape, tapeBuyUsd, tapeSellUsd } = useMemo(() => {
+  const filteredTape = useMemo(
+    () =>
+      tapePrints
+        .filter((p) => p.notionalUsd >= tapeMinUsd)
+        .filter((p) => tapeSide === 'ALL' || p.side === tapeSide)
+        .slice(0, 45),
+    [tapePrints, tapeMinUsd, tapeSide],
+  );
+
+  const { tapeBuyUsd, tapeSellUsd } = useMemo(() => {
     let buy = 0;
     let sell = 0;
-    const out: WhaleTapePrint[] = [];
-    for (const p of tapePrints) {
-      if (p.notionalUsd < tapeMinUsd) continue;
+    for (const p of filteredTape) {
       if (p.side === 'BUY') buy += p.notionalUsd;
       else sell += p.notionalUsd;
-      if (tapeSide !== 'ALL' && p.side !== tapeSide) continue;
-      out.push(p);
     }
-    return { filteredTape: out.slice(0, 45), tapeBuyUsd: buy, tapeSellUsd: sell };
-  }, [tapePrints, tapeMinUsd, tapeSide]);
+    return { tapeBuyUsd: buy, tapeSellUsd: sell };
+  }, [filteredTape]);
 
-  const tideTone =
-    marketTide.verdict === 'RISK-ON BULLISH'
-      ? 'bull'
-      : marketTide.verdict === 'RISK-OFF BEARISH'
-        ? 'bear'
-        : 'amber';
-  const totalOptPrem = marketTide.callPremiumUsd + marketTide.putPremiumUsd;
+  const totalTidePrem = marketTide.callPremiumUsd + marketTide.putPremiumUsd;
   const callPremPct =
-    totalOptPrem > 0
-      ? Math.round((marketTide.callPremiumUsd / totalOptPrem) * 100)
+    totalTidePrem > 0
+      ? Math.round((marketTide.callPremiumUsd / totalTidePrem) * 100)
       : 50;
   const totalTapeUsd = tapeBuyUsd + tapeSellUsd;
   const tapeBuyPct =
     totalTapeUsd > 0 ? Math.round((tapeBuyUsd / totalTapeUsd) * 100) : 50;
+
+  const tideTone =
+    marketTide.score >= 15
+      ? 'bull'
+      : marketTide.score <= -15
+        ? 'bear'
+        : 'amber';
 
   return (
     <div className="whale-flow-shell">
@@ -302,7 +398,7 @@ export function WhaleFlowDesk({
                 <span>WHALE FLOW</span>
               </span>
               <span className="daily-bread-subtag mono">
-                UNUSUAL OPTIONS ACTIVITY • MARKET TIDE • 24/7 WHALE TAPE
+                UNUSUAL OPTIONS • DEALER GEX WALLS • 24/7 WHALE TAPE
               </span>
               {flowState && (
                 <span className="daily-bread-sync mono">
@@ -311,7 +407,7 @@ export function WhaleFlowDesk({
               )}
             </div>
             <h1 className="daily-bread-hero-title">
-              Smart-Money Options Flow &amp; Live 24/7 Whale Tape
+              Smart-Money Options Flow, Dealer GEX &amp; 24/7 Whale Tape
             </h1>
           </div>
 
@@ -407,9 +503,18 @@ export function WhaleFlowDesk({
         </div>
       </section>
 
-      {/* 2. Split Command Grid: Unusual Options Activity (Left) + Live 24/7 Whale Tape (Right) */}
+      {/* 2. Dealer Gamma Exposure (GEX) Strike Profile, Walls & IV Term Structure */}
+      <GexProfilePanel
+        summaries={allSummaries}
+        selectedTicker={gexTicker || undefined}
+        onSelectProfileTicker={setGexTicker}
+        onOpenTerminal={onSelectTicker}
+        onArmAlert={onArmAlert}
+      />
+
+      {/* 3. Split Command Grid: Pro Options Flow Screener (Left) + Live 24/7 Whale Tape (Right) */}
       <div className="whale-split-grid">
-        {/* LEFT: Unusual Options Activity (UOA) & Hot Chains */}
+        {/* LEFT: Pro Unusual Options Activity (UOA) Screener */}
         <section className="whale-card" aria-label="Unusual Options Activity Hot Chains">
           <div className="panel-header">
             <div className="panel-title-group">
@@ -443,16 +548,18 @@ export function WhaleFlowDesk({
             </form>
           </div>
 
-          {/* Filter Strip + Max Pain Leaders Ribbon */}
+          {/* Pro Presets + Granular DTE / Min Prem / Moneyness Bar */}
           <div className="whale-uoa-toolbar">
-            <div className="bread-filter-group" role="tablist" aria-label="Filter options flow">
+            <div className="bread-filter-group" role="tablist" aria-label="Filter options flow presets">
               {(
                 [
                   ['ALL', 'All Flow'],
                   ['CALL', 'Calls'],
                   ['PUT', 'Puts'],
+                  ['LOTTO_0_7D', '0-7D Lotto'],
+                  ['LEAPS', 'Whale LEAPS'],
                   ['VOL_OI', 'Vol > 1.5× OI'],
-                  ['MEGA', 'Mega $100K+'],
+                  ['MEGA', 'Mega $250K+'],
                 ] as Array<[UoaFilter, string]>
               ).map(([id, label]) => (
                 <button
@@ -466,6 +573,68 @@ export function WhaleFlowDesk({
                   {label}
                 </button>
               ))}
+            </div>
+
+            {/* Granular Screener Filters */}
+            <div className="whale-pro-filters mono">
+              <label className="whale-select-wrap">
+                <span className="whale-mp-k">DTE</span>
+                <select
+                  className="whale-select mono"
+                  value={dteBucket}
+                  onChange={(e) => setDteBucket(e.target.value as DteBucket)}
+                  aria-label="Filter by Days to Expiration"
+                >
+                  <option value="ALL">All DTE</option>
+                  <option value="0_7">0–7D</option>
+                  <option value="8_30">8–30D</option>
+                  <option value="31_90">31–90D</option>
+                  <option value="90_PLUS">90D+ LEAPS</option>
+                </select>
+              </label>
+
+              <label className="whale-select-wrap">
+                <span className="whale-mp-k">PREM</span>
+                <select
+                  className="whale-select mono"
+                  value={minPrem}
+                  onChange={(e) => setMinPrem(Number(e.target.value) as PremBucket)}
+                  aria-label="Filter by minimum premium"
+                >
+                  <option value={0}>Any $</option>
+                  <option value={25000}>$25K+</option>
+                  <option value={100000}>$100K+</option>
+                  <option value={250000}>$250K+</option>
+                  <option value={1000000}>$1M+</option>
+                </select>
+              </label>
+
+              <label className="whale-select-wrap">
+                <span className="whale-mp-k">STRIKE</span>
+                <select
+                  className="whale-select mono"
+                  value={moneynessFilter}
+                  onChange={(e) =>
+                    setMoneynessFilter(e.target.value as MoneynessFilter)
+                  }
+                  aria-label="Filter by moneyness"
+                >
+                  <option value="ALL">All</option>
+                  <option value="OTM">OTM</option>
+                  <option value="ATM">ATM</option>
+                  <option value="ITM">ITM</option>
+                </select>
+              </label>
+
+              {hasGranularFilters && (
+                <button
+                  type="button"
+                  className="whale-reset-btn mono"
+                  onClick={handleResetFilters}
+                >
+                  RESET
+                </button>
+              )}
             </div>
 
             {allSummaries.length > 0 && (
@@ -510,8 +679,8 @@ export function WhaleFlowDesk({
           ) : filteredContracts.length === 0 ? (
             <div className="daily-bread-loading mono">
               <span>
-                No unusual contracts match this filter right now — switch to &ldquo;All
-                Flow&rdquo; or scan another ticker.
+                No unusual contracts match these filters right now — reset filters or scan
+                another ticker.
               </span>
             </div>
           ) : (
@@ -525,6 +694,7 @@ export function WhaleFlowDesk({
                     <th>VOL / OI</th>
                     <th>IV / Δ</th>
                     <th>SIGNALS</th>
+                    <th>P&amp;L</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -606,6 +776,19 @@ export function WhaleFlowDesk({
                             ))}
                           </div>
                         </td>
+                        <td>
+                          {onSimulateContract && (
+                            <button
+                              type="button"
+                              className="whale-sim-btn"
+                              onClick={() => onSimulateContract(c)}
+                              title={`Open Black-Scholes P&L Heatmap for ${c.ticker} ${c.contract}`}
+                            >
+                              <Calculator size={10} />
+                              <span>SIM</span>
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -635,6 +818,19 @@ export function WhaleFlowDesk({
             </div>
 
             <div className="whale-tape-filters mono">
+              <button
+                type="button"
+                className={`whale-chime-btn${chimeThreshold > 0 ? ' active' : ''}`}
+                onClick={handleCycleChime}
+                title="Toggle live Web Audio chime for large whale tape fills"
+              >
+                {chimeThreshold > 0 ? <Volume2 size={11} /> : <VolumeX size={11} />}
+                <span>
+                  {chimeThreshold > 0
+                    ? `CHIME $${chimeThreshold / 1000}K+`
+                    : 'CHIME OFF'}
+                </span>
+              </button>
               {([0, 5000, 25000, 100000] as TapeMinUsd[]).map((minVal) => (
                 <button
                   key={minVal}
@@ -647,6 +843,21 @@ export function WhaleFlowDesk({
               ))}
             </div>
           </div>
+
+          {lastWhalePing && chimeThreshold > 0 && (
+            <button
+              type="button"
+              className="whale-ping-banner mono"
+              onClick={() => onSelectTicker(lastWhalePing.ticker)}
+            >
+              <Volume2 size={11} className="text-amber" />
+              <span>
+                WHALE PING: {lastWhalePing.side} {lastWhalePing.ticker}{' '}
+                <strong>{fmtUsd(lastWhalePing.notionalUsd)}</strong> @{' '}
+                {fmtPx(lastWhalePing.price)}
+              </span>
+            </button>
+          )}
 
           {/* Live Buy vs Sell Notional Tape Delta Bar */}
           <div className="whale-tape-delta mono">
