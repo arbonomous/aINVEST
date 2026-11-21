@@ -7822,19 +7822,37 @@ body {
 }
 
 /* ===========================
-   DEDICATED HEADER ROW 1 & ROW 2 — BALANCED ARCHITECTURAL SPACING
+   3-ROW INSTITUTIONAL HEADER — MASTHEAD, NAV+CONTROLS, FULL-WIDTH SEARCH
    =========================== */
 
-.header-left-group {
+.header-brand-row {
+  width: 100%;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--header-grad);
+}
+
+.header-brand-row-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
-  gap: 16px;
-  min-width: 0;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.brand-tagline {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .terminal-header-inner {
-  padding: 9px 16px;
+  padding: 7px 16px;
   gap: 12px;
+  background-color: var(--bg-bar);
 }
 
 .header-controls {
@@ -7855,6 +7873,7 @@ body {
 
 .view-nav-btn {
   height: 24px;
+  padding: 0 11px;
 }
 
 .header-search-row {
@@ -7866,25 +7885,26 @@ body {
 .header-search-row-inner {
   max-width: var(--container-max);
   margin: 0 auto;
-  padding: 8px 16px;
+  padding: 7px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 
+/* Fill all available space edge-to-edge — zero dead whitespace */
 .header-search-row .header-discovery-group {
   display: flex;
   align-items: center;
   gap: 8px;
   flex: 1;
-  max-width: 660px;
+  max-width: none;
   min-width: 0;
 }
 
 .header-search-row .ticker-search-wrap {
   flex: 1;
-  max-width: 100%;
+  max-width: none;
   min-width: 0;
 }
 
@@ -7901,7 +7921,7 @@ body {
 .header-quick-jump {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
@@ -7914,7 +7934,7 @@ body {
 }
 
 .header-qj-pill {
-  height: 24px;
+  height: 26px;
   padding: 0 8px;
   border-radius: 3px;
   border: 1px solid var(--border-hairline);
@@ -7939,28 +7959,38 @@ body {
   background-color: var(--emerald-dim);
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 1080px) {
   .header-quick-jump {
     display: none;
-  }
-
-  .header-search-row .header-discovery-group {
-    max-width: 100%;
   }
 }
 
 @media (max-width: 820px) {
-  .header-left-group {
-    display: contents;
+  .header-brand-row-inner {
+    padding: 7px 10px;
+  }
+
+  .brand-tagline {
+    display: none;
   }
 
   .terminal-header-inner {
-    padding: 8px 10px;
+    padding: 7px 10px;
     gap: 8px;
   }
 
   .primary-view-nav {
     height: auto;
+    order: 1;
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .header-controls {
+    order: 2;
+    flex-basis: 100%;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .header-search-row-inner {
@@ -7968,7 +7998,6 @@ body {
   }
 
   .header-search-row .header-discovery-group {
-    max-width: 100%;
     gap: 7px;
   }
 

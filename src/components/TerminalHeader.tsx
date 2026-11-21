@@ -252,8 +252,9 @@ export function TerminalHeader({
 
   return (
     <header className="terminal-header">
-      <div className="terminal-header-inner">
-        <div className="header-left-group">
+      {/* Row 1: Dedicated Brand Masthead */}
+      <div className="header-brand-row">
+        <div className="header-brand-row-inner">
           <button
             id="brand-home-btn"
             type="button"
@@ -278,50 +279,56 @@ export function TerminalHeader({
               </span>
             )}
           </button>
-
-          <nav className="primary-view-nav" aria-label="Primary sections">
-            <button
-              id="nav-view-home"
-              type="button"
-              className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
-              aria-current={activeView === 'home' ? 'page' : undefined}
-              onClick={() => onSelectView('home')}
-            >
-              <Newspaper size={12} />
-              <span>MARKETS</span>
-            </button>
-            <button
-              id="nav-view-whale-flow"
-              type="button"
-              className={`view-nav-btn view-nav-btn--whale mono${activeView === 'whale-flow' ? ' active' : ''}`}
-              aria-current={activeView === 'whale-flow' ? 'page' : undefined}
-              onClick={() => onSelectView('whale-flow')}
-            >
-              <Waves size={12} />
-              <span>WHALE FLOW</span>
-            </button>
-            <button
-              id="nav-view-daily-bread"
-              type="button"
-              className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
-              aria-current={activeView === 'daily-bread' ? 'page' : undefined}
-              onClick={() => onSelectView('daily-bread')}
-            >
-              <Flame size={12} />
-              <span>DAILY BREAD</span>
-            </button>
-            <button
-              id="nav-view-terminal"
-              type="button"
-              className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
-              aria-current={activeView === 'terminal' ? 'page' : undefined}
-              onClick={() => onSelectView('terminal')}
-            >
-              <Activity size={12} />
-              <span>{activeTicker}</span>
-            </button>
-          </nav>
+          <span className="brand-tagline mono">
+            LIVE MARKETS • WHALE FLOW • AI DAY-TRADE TERMINAL
+          </span>
         </div>
+      </div>
+
+      {/* Row 2: Navigation Tabs (Left) + Telemetry, Theme, Alerts & Share (Right) */}
+      <div className="terminal-header-inner">
+        <nav className="primary-view-nav" aria-label="Primary sections">
+          <button
+            id="nav-view-home"
+            type="button"
+            className={`view-nav-btn mono${activeView === 'home' ? ' active' : ''}`}
+            aria-current={activeView === 'home' ? 'page' : undefined}
+            onClick={() => onSelectView('home')}
+          >
+            <Newspaper size={12} />
+            <span>MARKETS</span>
+          </button>
+          <button
+            id="nav-view-whale-flow"
+            type="button"
+            className={`view-nav-btn view-nav-btn--whale mono${activeView === 'whale-flow' ? ' active' : ''}`}
+            aria-current={activeView === 'whale-flow' ? 'page' : undefined}
+            onClick={() => onSelectView('whale-flow')}
+          >
+            <Waves size={12} />
+            <span>WHALE FLOW</span>
+          </button>
+          <button
+            id="nav-view-daily-bread"
+            type="button"
+            className={`view-nav-btn view-nav-btn--bread mono${activeView === 'daily-bread' ? ' active' : ''}`}
+            aria-current={activeView === 'daily-bread' ? 'page' : undefined}
+            onClick={() => onSelectView('daily-bread')}
+          >
+            <Flame size={12} />
+            <span>DAILY BREAD</span>
+          </button>
+          <button
+            id="nav-view-terminal"
+            type="button"
+            className={`view-nav-btn mono${activeView === 'terminal' ? ' active' : ''}`}
+            aria-current={activeView === 'terminal' ? 'page' : undefined}
+            onClick={() => onSelectView('terminal')}
+          >
+            <Activity size={12} />
+            <span>{activeTicker}</span>
+          </button>
+        </nav>
 
         <div className="header-controls">
           <div className="session-telemetry" aria-label="Eastern Time">
