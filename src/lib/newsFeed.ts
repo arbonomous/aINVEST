@@ -209,12 +209,121 @@ export function formatRelativeAge(unixMs: number): string {
   return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
+export const EDITORIAL_IMAGE_POOL: string[] = [
+  './news/story-trading-desk.jpg',
+  './news/story-semiconductors.jpg',
+  './news/story-ai-compute.jpg',
+  './news/hero-ipo-floor.jpg',
+  './news/story-fed-treasury.jpg',
+  './news/story-wallstreet-macro.jpg',
+  './news/story-ev-energy.jpg',
+  './news/story-space-aerospace.jpg',
+];
+
 export const FALLBACK_EDITORIAL_IMAGES: Record<Exclude<NewsCategory, 'all'>, string> = {
   ipos: './news/hero-ipo-floor.jpg',
-  stocks: './news/hero-ipo-floor.jpg',
+  stocks: './news/story-trading-desk.jpg',
   'ai-tech': './news/story-ai-compute.jpg',
   macro: './news/story-wallstreet-macro.jpg',
 };
+
+function hashString(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    h = (h * 31 + input.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h);
+}
+
+/**
+ * Picks a topic-matched local editorial photo for any news article that lacks
+ * an RSS thumbnail (or whose remote image fails to load), avoiding duplicates
+ * within the `recentAvoid` window when provided.
+ */
+export function getArticleFallbackImage(
+  article: Pick<NewsArticle, 'id' | 'title' | 'summary' | 'category' | 'tickers'>,
+  recentAvoid?: string | string[],
+): string {
+  const titleLower = article.title.toLowerCase();
+  const fullText = `${article.title} ${article.summary}`.toLowerCase();
+  const tickers = new Set(article.tickers.map((t) => t.toUpperCase()));
+  const avoidSet = new Set(
+    Array.isArray(recentAvoid)
+      ? recentAvoid
+      : recentAvoid
+        ? [recentAvoid]
+        : [],
+  );
+
+  let preferred: string;
+  if (
+    tickers.has('SPCX') ||
+    tickers.has('BA') ||
+    /\b(spacex|starlink|rocket|orbital|aerospace|satellite|defense)\b/.test(titleLower)
+  ) {
+    preferred = './news/story-space-aerospace.jpg';
+  } else if (
+    tickers.has('NVDA') ||
+    tickers.has('AMD') ||
+    tickers.has('ARM') ||
+    tickers.has('AVGO') ||
+    tickers.has('TSM') ||
+    tickers.has('MU') ||
+    tickers.has('INTC') ||
+    tickers.has('SKHY') ||
+    tickers.has('CBRS') ||
+    /\b(semiconductor|chip|chips|soxx|smh|dram|hbm|wafer|gpu|foundry|silicon|nvidia|arm)\b/.test(
+      titleLower,
+    )
+  ) {
+    preferred = './news/story-semiconductors.jpg';
+  } else if (
+    tickers.has('TSLA') ||
+    tickers.has('XOM') ||
+    tickers.has('CVX') ||
+    /\b(tesla|electric vehicle|\bev\b|battery|energy|crude|oil|solar|grid|lithium|robotics)\b/.test(
+      titleLower,
+    )
+  ) {
+    preferred = './news/story-ev-energy.jpg';
+  } else if (
+    /\b(fed|federal reserve|powell|treasury|bond yield|inflation|cpi|pce|fomc|rate cut|rate hike|tariff|central bank)\b/.test(
+      fullText,
+    )
+  ) {
+    preferred = './news/story-fed-treasury.jpg';
+  } else if (
+    article.category === 'ipos' ||
+    /\b(ipo|public offering|flotation|nasdaq debut|nyse debut|s-1|new issue)\b/.test(
+      titleLower,
+    )
+  ) {
+    preferred = './news/hero-ipo-floor.jpg';
+  } else if (
+    article.category === 'ai-tech' ||
+    /\b(ai|artificial intelligence|anthropic|claude|openai|data center|cloud)\b/.test(
+      titleLower,
+    )
+  ) {
+    preferred = './news/story-ai-compute.jpg';
+  } else if (article.category === 'macro') {
+    preferred = './news/story-wallstreet-macro.jpg';
+  } else {
+    preferred = './news/story-trading-desk.jpg';
+  }
+
+  if (avoidSet.has(preferred)) {
+    const startIdx =
+      hashString(article.id || article.title) % EDITORIAL_IMAGE_POOL.length;
+    for (let offset = 0; offset < EDITORIAL_IMAGE_POOL.length; offset += 1) {
+      const candidate =
+        EDITORIAL_IMAGE_POOL[(startIdx + offset) % EDITORIAL_IMAGE_POOL.length];
+      if (!avoidSet.has(candidate)) return candidate;
+    }
+  }
+
+  return preferred;
+}
 
 /**
  * Fallback market news baseline used immediately before live RSS feeds finish loading

@@ -17,8 +17,9 @@ import type { DailyBreadCall } from '../lib/dailyBreadEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
-  FALLBACK_EDITORIAL_IMAGES,
+  EDITORIAL_IMAGE_POOL,
   formatRelativeAge,
+  getArticleFallbackImage,
   getInitialEditorialNews,
   getPublisherGroup,
   type NewsArticle,
@@ -191,19 +192,14 @@ export function LandingPage({
   const { heroStory, featurePair, streamStories, breakingLead } = useMemo(() => {
     const editorialFallback = getInitialEditorialNews();
     const livePool = articles.filter((a) => a.isLiveFetched);
-    const fallbackPool = [
-      './news/hero-ipo-floor.jpg',
-      './news/story-ai-compute.jpg',
-      './news/story-wallstreet-macro.jpg',
-    ];
     const usedFallbacks = new Set<string>();
 
     const attachDistinctFallback = (story: NewsArticle): NewsArticle => {
       if (story.imageUrl) return story;
-      const preferred = FALLBACK_EDITORIAL_IMAGES[story.category];
+      const preferred = getArticleFallbackImage(story);
       const chosen = !usedFallbacks.has(preferred)
         ? preferred
-        : fallbackPool.find((img) => !usedFallbacks.has(img)) ?? preferred;
+        : EDITORIAL_IMAGE_POOL.find((img) => !usedFallbacks.has(img)) ?? preferred;
       usedFallbacks.add(chosen);
       return { ...story, imageUrl: chosen };
     };
@@ -281,6 +277,22 @@ export function LandingPage({
     }
     return articles.filter((a) => a.category === feedTab);
   }, [feedTab, streamStories, articles, pinnedSet]);
+
+  const streamWithImages = useMemo(() => {
+    const out: Array<{
+      item: NewsArticle;
+      resolvedImg: string;
+      fallbackImg: string;
+    }> = [];
+    const recentImgs: string[] = [];
+    for (const item of filteredStream.slice(0, 18)) {
+      const fallbackImg = getArticleFallbackImage(item, recentImgs.slice(-4));
+      const resolvedImg = item.imageUrl || fallbackImg;
+      recentImgs.push(resolvedImg);
+      out.push({ item, resolvedImg, fallbackImg });
+    }
+    return out;
+  }, [filteredStream]);
 
   // Compute live Market Movers (Most Active, Top Gainers, Top Losers) from 7,290-stock directory + Hyperliquid
   const marketMovers = useMemo(() => {
@@ -510,7 +522,7 @@ export function LandingPage({
               className="editorial-hero-media"
             >
               <img
-                src={heroStory.imageUrl || './news/hero-ipo-floor.jpg'}
+                src={heroStory.imageUrl || getArticleFallbackImage(heroStory)}
                 alt={heroStory.title}
                 className="editorial-hero-img"
                 referrerPolicy="no-referrer"
@@ -518,7 +530,7 @@ export function LandingPage({
                   const img = e.currentTarget;
                   if (!img.dataset.fallbackApplied) {
                     img.dataset.fallbackApplied = '1';
-                    img.src = FALLBACK_EDITORIAL_IMAGES[heroStory.category];
+                    img.src = getArticleFallbackImage(heroStory);
                   }
                 }}
               />
@@ -707,12 +719,12 @@ export function LandingPage({
               </div>
             ) : (
               <div className="news-stream-list">
-                {filteredStream.length === 0 ? (
+                {streamWithImages.length === 0 ? (
                   <div className="news-stream-empty mono">
                     No stories in this category yet — switch to Top Stories or Live Wire.
                   </div>
                 ) : (
-                  filteredStream.slice(0, 18).map((item) => (
+                  streamWithImages.map(({ item, resolvedImg, fallbackImg }) => (
                     <article key={item.id} className="news-stream-item">
                       <div className="news-stream-content">
                         <div className="editorial-meta-row mono">
@@ -753,26 +765,27 @@ export function LandingPage({
                         )}
                       </div>
 
-                      {item.imageUrl && (
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="news-stream-thumb-wrap"
-                        >
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="news-stream-thumb"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                            onError={(e) => {
-                              const parent = e.currentTarget.parentElement;
-                              if (parent) parent.style.display = 'none';
-                            }}
-                          />
-                        </a>
-                      )}
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="news-stream-thumb-wrap"
+                      >
+                        <img
+                          src={resolvedImg}
+                          alt={item.title}
+                          className="news-stream-thumb"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const img = e.currentTarget;
+                            if (!img.dataset.fallbackApplied) {
+                              img.dataset.fallbackApplied = '1';
+                              img.src = fallbackImg;
+                            }
+                          }}
+                        />
+                      </a>
                     </article>
                   ))
                 )}
