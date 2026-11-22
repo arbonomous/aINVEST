@@ -35,7 +35,7 @@ import { TradingViewEmbed } from './TradingViewEmbed';
 const TV_TIMELINE_SCRIPT =
   'https://s3.tradingview.com/external-embedding/embed-widget-timeline.js';
 
-type FeedTab = NewsCategory | 'tv-wire';
+type FeedTab = NewsCategory | 'watchlist' | 'tv-wire';
 type MoverTab = 'active' | 'gainers' | 'losers';
 
 interface LandingPageProps {
@@ -65,6 +65,7 @@ interface LandingPageProps {
   onOpenExplorer: (tab?: ExplorerTab) => void;
   onOpenDailyBread: () => void;
   onTogglePin: (ticker: string) => void;
+  onNotify?: (message: string) => void;
 }
 
 interface PulseBenchmark {
@@ -178,6 +179,7 @@ export function LandingPage({
   onOpenExplorer,
   onOpenDailyBread,
   onTogglePin,
+  onNotify,
 }: LandingPageProps) {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [moverTab, setMoverTab] = useState<MoverTab>('active');
@@ -273,8 +275,12 @@ export function LandingPage({
 
   const filteredStream = useMemo(() => {
     if (feedTab === 'all' || feedTab === 'tv-wire') return streamStories;
+    if (feedTab === 'watchlist') {
+      if (pinnedSet.size === 0) return [];
+      return articles.filter((a) => a.tickers.some((t) => pinnedSet.has(t)));
+    }
     return articles.filter((a) => a.category === feedTab);
-  }, [feedTab, streamStories, articles]);
+  }, [feedTab, streamStories, articles, pinnedSet]);
 
   // Compute live Market Movers (Most Active, Top Gainers, Top Losers) from 7,290-stock directory + Hyperliquid
   const marketMovers = useMemo(() => {
@@ -672,6 +678,7 @@ export function LandingPage({
                     ['ipos', 'IPOs'],
                     ['ai-tech', 'Tech & AI'],
                     ['macro', 'Macro & Fed'],
+                    ['watchlist', `★ Watchlist (${pinnedTickers.length})`],
                     ['tv-wire', 'Live Wire'],
                   ] as Array<[FeedTab, string]>
                 ).map(([id, label]) => (
@@ -1129,6 +1136,7 @@ export function LandingPage({
         directoryMap={directoryMap}
         breakingNews={articles}
         trackedTrades={trackedTrades}
+        pinnedTickers={pinnedTickers}
         onTrackCall={onTrackCall}
         onArmAlert={onArmAlert}
         onCloseTrade={onCloseTrade}
@@ -1136,6 +1144,7 @@ export function LandingPage({
         onClearClosedTrades={onClearClosedTrades}
         onSelectTicker={onSelectTicker}
         onOpenFullDesk={onOpenDailyBread}
+        onNotify={onNotify}
       />
     </main>
   );

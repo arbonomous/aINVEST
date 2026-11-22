@@ -4,12 +4,14 @@ import {
   BellPlus,
   BookmarkCheck,
   BookmarkPlus,
+  Camera,
   Crosshair,
   Flame,
   RefreshCw,
   Search,
   ShieldAlert,
   Sparkles,
+  Star,
   TrendingDown,
   TrendingUp,
   Trophy,
@@ -29,6 +31,7 @@ import {
   evaluateTrackedTrade,
   type TrackedTrade,
 } from '../lib/paperTrades';
+import { exportDailyBreadSnapshotCard } from '../lib/snapshotCard';
 import {
   directoryEntryToQuote,
   fetchUniversalCandles,
@@ -60,6 +63,7 @@ interface DailyBreadDeskProps {
   directoryMap: Record<string, DirectoryEntry>;
   breakingNews: NewsArticle[];
   trackedTrades: TrackedTrade[];
+  pinnedTickers?: string[];
   compact?: boolean;
   onTrackCall: (call: DailyBreadCall) => void;
   onArmAlert: (params: {
@@ -73,6 +77,7 @@ interface DailyBreadDeskProps {
   onClearClosedTrades: () => void;
   onSelectTicker: (ticker: string) => void;
   onOpenFullDesk?: () => void;
+  onNotify?: (message: string) => void;
 }
 
 function fmtPx(n: number): string {
@@ -85,6 +90,7 @@ export function DailyBreadDesk({
   directoryMap,
   breakingNews,
   trackedTrades,
+  pinnedTickers = [],
   compact = false,
   onTrackCall,
   onArmAlert,
@@ -93,9 +99,11 @@ export function DailyBreadDesk({
   onClearClosedTrades,
   onSelectTicker,
   onOpenFullDesk,
+  onNotify,
 }: DailyBreadDeskProps) {
   const [basket, setBasket] = useState<BasketId>('leaders');
   const [dirFilter, setDirFilter] = useState<DirectionFilter>('ALL');
+  const [watchlistOnly, setWatchlistOnly] = useState<boolean>(false);
   const [customTickerInput, setCustomTickerInput] = useState<string>('');
   const [customCalls, setCustomCalls] = useState<DailyBreadCall[]>([]);
   const [scanningCustom, setScanningCustom] = useState<boolean>(false);
@@ -256,6 +264,7 @@ export function DailyBreadDesk({
   };
 
   const isLoadingBasket = scanState?.basket !== basket;
+  const pinnedSet = useMemo(() => new Set(pinnedTickers), [pinnedTickers]);
 
   const combinedCalls = useMemo(() => {
     const basketCalls = scanState?.basket === basket ? scanState.calls : [];
@@ -268,13 +277,16 @@ export function DailyBreadDesk({
     }
 
     const filtered = merged.filter((c) => {
+      if (watchlistOnly && pinnedSet.size > 0 && !pinnedSet.has(c.ticker)) {
+        return false;
+      }
       if (dirFilter === 'ALL') return true;
       if (dirFilter === 'TOP') return c.direction !== 'WAIT' && c.confidence >= 70;
       return c.direction === dirFilter;
     });
 
     return compact ? filtered.slice(0, 4) : filtered;
-  }, [scanState, basket, customCalls, dirFilter, compact]);
+  }, [scanState, basket, customCalls, dirFilter, compact, watchlistOnly, pinnedSet]);
 
   const summaryCounts = useMemo(() => {
     const list = scanState?.basket === basket ? scanState.calls : [];
@@ -420,6 +432,20 @@ export function DailyBreadDesk({
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            className={`watchlist-filter-pill mono${watchlistOnly ? ' active' : ''}`}
+            disabled={pinnedTickers.length === 0}
+            onClick={() => setWatchlistOnly((v) => !v)}
+            title={
+              pinnedTickers.length > 0
+                ? `Filter AI setups to your ${pinnedTickers.length} pinned tickers`
+                : 'Pin tickers in any War Room or Explorer to enable Watchlist filter'
+            }
+          >
+            <Star size={10} />
+            <span>Watchlist ({pinnedTickers.length})</span>
+          </button>
         </div>
 
         {!compact && (
@@ -782,6 +808,24 @@ export function DailyBreadDesk({
                         </span>
                       </button>
                     )}
+
+                    <button
+                      type="button"
+                      className="whale-sim-btn mono"
+                      onClick={() => {
+                        void exportDailyBreadSnapshotCard(call).then((res) => {
+                          if (res === 'copied') {
+                            onNotify?.(`Copied & saved ${call.ticker} AI Call PNG card`);
+                          } else if (res === 'downloaded') {
+                            onNotify?.(`Downloaded ${call.ticker} AI Call PNG card`);
+                          }
+                        });
+                      }}
+                      title={`Export ${call.ticker} AI Call PNG snapshot card`}
+                    >
+                      <Camera size={10} />
+                      <span>PNG</span>
+                    </button>
 
                     <button
                       type="button"

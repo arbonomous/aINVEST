@@ -1,5 +1,13 @@
 import { memo, useMemo, useState } from 'react';
-import { Activity, BellPlus, Layers, ShieldAlert, TrendingUp } from 'lucide-react';
+import {
+  Activity,
+  BellPlus,
+  Camera,
+  Layers,
+  ShieldAlert,
+  TrendingUp,
+} from 'lucide-react';
+import { exportGexSnapshotCard } from '../lib/snapshotCard';
 import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
 
 type ProfileMode = 'gex' | 'oi' | 'iv';
@@ -9,6 +17,7 @@ interface GexProfilePanelProps {
   selectedTicker?: string;
   onSelectProfileTicker?: (ticker: string) => void;
   onOpenTerminal?: (ticker: string) => void;
+  onNotify?: (message: string) => void;
   onArmAlert?: (params: {
     ticker: string;
     targetPrice: number;
@@ -38,9 +47,11 @@ function GexProfilePanelComponent({
   selectedTicker,
   onSelectProfileTicker,
   onOpenTerminal,
+  onNotify,
   onArmAlert,
 }: GexProfilePanelProps) {
   const [mode, setMode] = useState<ProfileMode>('gex');
+  const [exportingPng, setExportingPng] = useState(false);
 
   const activeSummary = useMemo(() => {
     if (summaries.length === 0) return null;
@@ -99,6 +110,23 @@ function GexProfilePanelComponent({
     return { text: `${skew >= 0 ? '+' : ''}${skew}% BALANCED`, tone: 'text-amber' };
   }, [activeSummary]);
 
+  const handleExportPng = async () => {
+    if (!activeSummary || exportingPng) return;
+    setExportingPng(true);
+    try {
+      const res = await exportGexSnapshotCard(activeSummary);
+      if (res === 'copied') {
+        onNotify?.(`Copied & saved ${activeSummary.ticker} GEX PNG card`);
+      } else if (res === 'downloaded') {
+        onNotify?.(`Downloaded ${activeSummary.ticker} GEX PNG card`);
+      } else {
+        onNotify?.('Could not export GEX PNG card');
+      }
+    } finally {
+      setExportingPng(false);
+    }
+  };
+
   return (
     <section
       className="whale-card"
@@ -142,6 +170,18 @@ function GexProfilePanelComponent({
               {label}
             </button>
           ))}
+          {activeSummary && activeSummary.gexProfile.length > 0 && (
+            <button
+              type="button"
+              className="whale-sim-btn"
+              onClick={() => void handleExportPng()}
+              disabled={exportingPng}
+              title={`Download / copy ${activeSummary.ticker} Dealer GEX PNG card`}
+            >
+              <Camera size={10} />
+              <span>{exportingPng ? '…' : 'PNG CARD'}</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -1,0 +1,51 @@
+{
+  "name": "aINVEST — Live Markets, Whale Flow & AI Terminal",
+  "short_name": "aINVEST",
+  "description": "Real-time AI financial terminal for 7,290+ US stocks, IPOs, unusual options flow, dealer GEX walls, and 24/7 Hyperliquid markets.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0E1015",
+  "theme_color": "#0E1015",
+  "orientation": "any",
+  "categories": ["finance", "business", "news"],
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Whale Flow & GEX",
+      "short_name": "Whale Flow",
+      "url": "./?view=whale-flow",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Daily Bread AI Calls",
+      "short_name": "Daily Bread",
+      "url": "./?view=daily-bread",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "NVDA Live Terminal",
+      "short_name": "NVDA",
+      "url": "./?ticker=NVDA",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

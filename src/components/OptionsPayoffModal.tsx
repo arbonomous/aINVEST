@@ -1,6 +1,13 @@
 import { memo, useEffect, useMemo, useState } from 'react';
-import { Calculator, Check, Copy, X } from 'lucide-react';
-import { buildPayoffHeatmap } from '../lib/optionsPricing';
+import { Calculator, Camera, Check, Copy, Layers, X } from 'lucide-react';
+import {
+  STRATEGY_PRESETS,
+  buildMultiLegPayoffHeatmap,
+  buildStrategyLegs,
+  type OptionLeg,
+  type StrategyPresetId,
+} from '../lib/optionsPricing';
+import { exportOptionsPayoffSnapshotCard } from '../lib/snapshotCard';
 import type { OptionContractFlow } from '../lib/whaleFlowEngine';
 
 interface OptionsPayoffModalProps {
@@ -22,19 +29,15 @@ function OptionsPayoffModalComponent({
   onClose,
   onCopySuccess,
 }: OptionsPayoffModalProps) {
-  const defaultEntry =
-    contract.ask > 0
-      ? contract.ask
-      : contract.mark > 0
-        ? contract.mark
-        : Math.max(0.1, contract.bid);
-
-  const [side, setSide] = useState<'LONG' | 'SHORT'>('LONG');
+  const [preset, setPreset] = useState<StrategyPresetId>('SINGLE');
+  const [legs, setLegs] = useState<OptionLeg[]>(() =>
+    buildStrategyLegs(contract, 'SINGLE'),
+  );
   const [contracts, setContracts] = useState<number>(1);
-  const [entryInput, setEntryInput] = useState<string>(defaultEntry.toFixed(2));
   const [ivShiftPct, setIvShiftPct] = useState<number>(0);
   const [displayUnit, setDisplayUnit] = useState<'usd' | 'roi'>('usd');
   const [copiedCard, setCopiedCard] = useState(false);
+  const [savingPng, setSavingPng] = useState(false);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -44,27 +47,30 @@ function OptionsPayoffModalComponent({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const parsedEntry = useMemo(() => {
-    const n = Number.parseFloat(entryInput);
-    return Number.isFinite(n) && n > 0 ? n : defaultEntry;
-  }, [entryInput, defaultEntry]);
+  const handleSelectPreset = (nextPreset: StrategyPresetId) => {
+    setPreset(nextPreset);
+    setLegs(buildStrategyLegs(contract, nextPreset));
+  };
 
-  const baseIvPct = contract.iv && contract.iv > 0 ? contract.iv : 48;
+  const handleUpdateLeg = (
+    id: string,
+    patch: Partial<Pick<OptionLeg, 'side' | 'strike' | 'entryPrice'>>,
+  ) => {
+    setLegs((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ...patch } : l)),
+    );
+  };
 
   const heatmap = useMemo(
     () =>
-      buildPayoffHeatmap({
-        type: contract.type,
-        side,
+      buildMultiLegPayoffHeatmap({
+        legs,
         spot: contract.spotPrice,
-        strike: contract.strike,
-        entryPrice: parsedEntry,
         dte: contract.dte,
-        ivPct: baseIvPct,
         contracts,
         ivShiftPct,
       }),
-    [contract, side, parsedEntry, baseIvPct, contracts, ivShiftPct],
+    [legs, contract.spotPrice, contract.dte, contracts, ivShiftPct],
   );
 
   const maxAbsPnl = useMemo(() => {
@@ -77,22 +83,65 @@ function OptionsPayoffModalComponent({
     return m;
   }, [heatmap.rows]);
 
+  const strategyLabel =
+    STRATEGY_PRESETS.find((p) => p.id === preset)?.label ?? 'Options Strategy';
+
+  const legsSummary = useMemo(
+    () =>
+      legs
+        .map(
+          (l) =>
+            `${l.side === 'LONG' ? '+' : '-'}${l.ratio} $${l.strike}${
+              l.type === 'CALL' ? 'C' : 'P'
+            } @ $${l.entryPrice.toFixed(2)}`,
+        )
+        .join('  |  '),
+    [legs],
+  );
+
   const handleCopyCard = async () => {
+    const beStr =
+      heatmap.breakevens.length > 0
+        ? heatmap.breakevens.map((b) => `$${b.toFixed(2)}`).join(' / ')
+        : '—';
     const text = [
-      `🐋 aINVEST OPTIONS FLOW SIM — ${contract.ticker} ${contract.contract}`,
-      `Side: ${side === 'LONG' ? 'BUY' : 'SELL'} ${contracts}x @ $${parsedEntry.toFixed(2)} ($${heatmap.costBasisUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })})`,
-      `Spot: $${contract.spotPrice.toFixed(2)} | Breakeven: $${heatmap.breakeven.toFixed(2)} | POP: ${heatmap.popPct}%`,
-      `IV: ${heatmap.effectiveIvPct}% | Δ ${heatmap.greeks.delta.toFixed(2)} | Γ ${heatmap.greeks.gamma.toFixed(4)} | Θ ${heatmap.greeks.thetaDaily.toFixed(2)}/d | ν ${heatmap.greeks.vegaPer1Pct.toFixed(2)}`,
-      `Unusual Tape: Vol ${contract.volume.toLocaleString()} vs OI ${contract.openInterest.toLocaleString()} (${contract.volOiRatio.toFixed(1)}x)`,
+      `🐋 aINVEST ${strategyLabel.toUpperCase()} — ${contract.ticker} (${contract.expiration.slice(5)} • ${contract.dte}DTE)`,
+      `Legs (${contracts}×): ${legsSummary}`,
+      `${heatmap.isNetCredit ? 'Net Credit' : 'Net Debit'}: $${Math.abs(heatmap.netCostUsd).toLocaleString('en-US')} | Breakeven: ${beStr} | POP: ${heatmap.popPct}%`,
+      `Max Profit: ${heatmap.maxProfitLabel} | Max Loss: ${heatmap.maxLossLabel}`,
+      `Greeks (IV ${heatmap.effectiveIvPct}%): Δ ${heatmap.greeks.delta.toFixed(2)} | Γ ${heatmap.greeks.gamma.toFixed(4)} | Θ ${heatmap.greeks.thetaDaily.toFixed(2)}/d | ν ${heatmap.greeks.vegaPer1Pct.toFixed(2)}`,
     ].join('\n');
 
     try {
       await navigator.clipboard.writeText(text);
       setCopiedCard(true);
-      onCopySuccess?.(`Copied ${contract.ticker} ${contract.contract} trade card`);
+      onCopySuccess?.(`Copied ${contract.ticker} ${strategyLabel} trade card`);
       window.setTimeout(() => setCopiedCard(false), 1800);
     } catch {
       onCopySuccess?.('Clipboard blocked — copy details manually');
+    }
+  };
+
+  const handleExportPng = async () => {
+    if (savingPng) return;
+    setSavingPng(true);
+    try {
+      const res = await exportOptionsPayoffSnapshotCard({
+        ticker: contract.ticker,
+        strategyLabel: `${strategyLabel.toUpperCase()} (${contract.expiration.slice(5)})`,
+        legsSummary,
+        spot: contract.spotPrice,
+        heatmap,
+      });
+      if (res === 'copied') {
+        onCopySuccess?.(`Copied & saved ${contract.ticker} PNG card`);
+      } else if (res === 'downloaded') {
+        onCopySuccess?.(`Downloaded ${contract.ticker} PNG card`);
+      } else {
+        onCopySuccess?.('Could not generate PNG snapshot');
+      }
+    } finally {
+      setSavingPng(false);
     }
   };
 
@@ -101,7 +150,7 @@ function OptionsPayoffModalComponent({
       className="explorer-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label={`Options P&L Simulator for ${contract.ticker} ${contract.contract}`}
+      aria-label={`Multi-Leg Options P&L Simulator for ${contract.ticker}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -111,16 +160,10 @@ function OptionsPayoffModalComponent({
           <div className="panel-title-group">
             <Calculator size={14} className="text-emerald" aria-hidden="true" />
             <h2 className="panel-title">
-              {contract.ticker} {contract.contract} — OPTIONS P&amp;L SIMULATOR
+              {contract.ticker} — OPTIONS STRATEGY &amp; P&amp;L SIMULATOR
             </h2>
-            <span
-              className={`whale-cp-badge mono ${
-                contract.type === 'CALL'
-                  ? 'whale-cp-badge--bull'
-                  : 'whale-cp-badge--bear'
-              }`}
-            >
-              {contract.dte}DTE • {contract.moneyness}
+            <span className="whale-cp-badge whale-cp-badge--bull mono">
+              {contract.expiration.slice(5)} • {contract.dte}DTE
             </span>
           </div>
 
@@ -128,10 +171,20 @@ function OptionsPayoffModalComponent({
             <button
               type="button"
               className="dispatch-refresh-btn mono"
+              onClick={() => void handleExportPng()}
+              disabled={savingPng}
+              title="Download / copy shareable PNG snapshot card for X or Discord"
+            >
+              <Camera size={11} />
+              <span>{savingPng ? 'RENDERING…' : 'PNG CARD'}</span>
+            </button>
+            <button
+              type="button"
+              className="dispatch-refresh-btn mono"
               onClick={() => void handleCopyCard()}
             >
               {copiedCard ? <Check size={11} /> : <Copy size={11} />}
-              <span>{copiedCard ? 'COPIED' : 'COPY CARD'}</span>
+              <span>{copiedCard ? 'COPIED' : 'COPY TEXT'}</span>
             </button>
             <button
               type="button"
@@ -145,36 +198,95 @@ function OptionsPayoffModalComponent({
         </div>
 
         <div className="payoff-modal-body">
+          {/* Multi-Leg Strategy Preset Strip */}
+          <div className="payoff-strategy-bar mono" role="tablist" aria-label="Options strategy preset">
+            <span className="payoff-strat-lbl">
+              <Layers size={11} className="text-emerald" />
+              <span>STRATEGY:</span>
+            </span>
+            {STRATEGY_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={preset === p.id}
+                className={`whale-mini-tab${preset === p.id ? ' active' : ''}`}
+                onClick={() => handleSelectPreset(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Interactive Leg Editor */}
+          <div className="payoff-legs-grid mono">
+            {legs.map((leg) => (
+              <div key={leg.id} className="payoff-leg-chip">
+                <button
+                  type="button"
+                  className={`payoff-leg-side ${
+                    leg.side === 'LONG' ? 'payoff-leg-side--buy' : 'payoff-leg-side--sell'
+                  }`}
+                  onClick={() =>
+                    handleUpdateLeg(leg.id, {
+                      side: leg.side === 'LONG' ? 'SHORT' : 'LONG',
+                    })
+                  }
+                  title="Click to toggle BUY / SELL"
+                >
+                  {leg.side === 'LONG' ? 'BUY' : 'SELL'}
+                </button>
+                <span
+                  className={`whale-cp-badge ${
+                    leg.type === 'CALL'
+                      ? 'whale-cp-badge--bull'
+                      : 'whale-cp-badge--bear'
+                  }`}
+                >
+                  {leg.type}
+                </span>
+                <label className="payoff-leg-field">
+                  <span>K $</span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    className="payoff-leg-input mono"
+                    value={leg.strike}
+                    onChange={(e) => {
+                      const v = Number.parseFloat(e.target.value);
+                      if (Number.isFinite(v) && v > 0) {
+                        handleUpdateLeg(leg.id, { strike: v });
+                      }
+                    }}
+                    aria-label={`${leg.type} strike`}
+                  />
+                </label>
+                <label className="payoff-leg-field">
+                  <span>@ $</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="0.01"
+                    className="payoff-leg-input mono"
+                    value={leg.entryPrice}
+                    onChange={(e) => {
+                      const v = Number.parseFloat(e.target.value);
+                      if (Number.isFinite(v) && v > 0) {
+                        handleUpdateLeg(leg.id, { entryPrice: v });
+                      }
+                    }}
+                    aria-label={`${leg.type} premium`}
+                  />
+                </label>
+              </div>
+            ))}
+          </div>
+
           {/* Interactive Controls Row */}
           <div className="payoff-controls-bar mono">
             <div className="payoff-ctrl-group">
-              <span className="payoff-ctrl-lbl">SIDE</span>
-              <div className="whale-side-pills">
-                <button
-                  type="button"
-                  className={`whale-mini-tab${side === 'LONG' ? ' active' : ''}`}
-                  onClick={() => {
-                    setSide('LONG');
-                    if (contract.ask > 0) setEntryInput(contract.ask.toFixed(2));
-                  }}
-                >
-                  BUY
-                </button>
-                <button
-                  type="button"
-                  className={`whale-mini-tab${side === 'SHORT' ? ' active' : ''}`}
-                  onClick={() => {
-                    setSide('SHORT');
-                    if (contract.bid > 0) setEntryInput(contract.bid.toFixed(2));
-                  }}
-                >
-                  SELL
-                </button>
-              </div>
-            </div>
-
-            <div className="payoff-ctrl-group">
-              <span className="payoff-ctrl-lbl">QTY</span>
+              <span className="payoff-ctrl-lbl">SPREAD QTY</span>
               <div className="whale-side-pills">
                 {[1, 5, 10, 25].map((q) => (
                   <button
@@ -187,21 +299,6 @@ function OptionsPayoffModalComponent({
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="payoff-ctrl-group">
-              <label htmlFor="payoff-entry-input" className="payoff-ctrl-lbl">
-                PREMIUM ($)
-              </label>
-              <input
-                id="payoff-entry-input"
-                type="number"
-                step="0.05"
-                min="0.01"
-                className="payoff-num-input mono"
-                value={entryInput}
-                onChange={(e) => setEntryInput(e.target.value)}
-              />
             </div>
 
             <div className="payoff-ctrl-group payoff-ctrl-group--slider">
@@ -246,18 +343,22 @@ function OptionsPayoffModalComponent({
           <div className="payoff-kpi-grid mono">
             <div className="payoff-kpi-tile">
               <span className="gex-level-k">
-                {side === 'LONG' ? 'DEBIT COST' : 'CREDIT REC'}
+                {heatmap.isNetCredit ? 'NET CREDIT' : 'NET DEBIT'}
               </span>
-              <strong>
+              <strong className={heatmap.isNetCredit ? 'text-emerald' : ''}>
                 $
-                {heatmap.costBasisUsd.toLocaleString('en-US', {
+                {Math.abs(heatmap.netCostUsd).toLocaleString('en-US', {
                   maximumFractionDigits: 0,
                 })}
               </strong>
             </div>
             <div className="payoff-kpi-tile">
-              <span className="gex-level-k">BREAKEVEN</span>
-              <strong className="text-amber">${heatmap.breakeven.toFixed(2)}</strong>
+              <span className="gex-level-k">BREAKEVEN(S)</span>
+              <strong className="text-amber">
+                {heatmap.breakevens.length > 0
+                  ? heatmap.breakevens.map((b) => `$${b.toFixed(2)}`).join(' / ')
+                  : '—'}
+              </strong>
             </div>
             <div className="payoff-kpi-tile">
               <span className="gex-level-k">PROB OF PROFIT</span>
@@ -276,7 +377,7 @@ function OptionsPayoffModalComponent({
               <strong className="text-crimson">{heatmap.maxLossLabel}</strong>
             </div>
             <div className="payoff-kpi-tile">
-              <span className="gex-level-k">GREEKS (Δ · Γ · Θ · ν)</span>
+              <span className="gex-level-k">NET GREEKS (Δ · Γ · Θ · ν)</span>
               <strong className="payoff-greeks-line">
                 Δ{heatmap.greeks.delta.toFixed(2)} · Γ
                 {heatmap.greeks.gamma.toFixed(3)} · Θ
@@ -350,7 +451,7 @@ function OptionsPayoffModalComponent({
                                 : 'text-muted'
                           }`}
                           style={{ backgroundColor: bg }}
-                          title={`Est option price $${cell.optionPrice.toFixed(2)} | P&L ${fmtSignedUsd(cell.pnlUsd)} (${cell.roiPct}%)`}
+                          title={`Net strategy mark $${cell.optionPrice.toFixed(2)} | P&L ${fmtSignedUsd(cell.pnlUsd)} (${cell.roiPct}%)`}
                         >
                           {displayUnit === 'usd'
                             ? fmtSignedUsd(cell.pnlUsd)
@@ -365,7 +466,7 @@ function OptionsPayoffModalComponent({
           </div>
 
           <div className="daily-bread-disclaimer mono">
-            Black-Scholes theoretical model ({contract.bid > 0 ? `Bid $${contract.bid.toFixed(2)} / Ask $${contract.ask.toFixed(2)}` : `Mark $${contract.mark.toFixed(2)}`}, r = 4.5%). Real fills depend on spreads, dividends, and volatility skew.
+            Black-Scholes multi-leg model (r = 4.5%). Secondary wing legs default to theoretical fair value and can be edited inline above.
           </div>
         </div>
       </div>

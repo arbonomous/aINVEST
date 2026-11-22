@@ -8,6 +8,7 @@ import {
   Radio,
   RefreshCw,
   Search,
+  Star,
   Volume2,
   VolumeX,
   Waves,
@@ -27,7 +28,13 @@ import {
   type TickerOptionsSummary,
   type WhaleTapePrint,
 } from '../lib/whaleFlowEngine';
+import {
+  appendMarketTideHistory,
+  loadTodayMarketTideHistory,
+  type MarketTidePoint,
+} from '../lib/marketTideHistory';
 import { GexProfilePanel } from './GexProfilePanel';
+import { MarketTideChart } from './MarketTideChart';
 
 type UoaFilter =
   | 'ALL'
@@ -48,8 +55,10 @@ interface WhaleFlowDeskProps {
   ctxMap: Record<string, HlAssetCtx>;
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
+  pinnedTickers?: string[];
   onSelectTicker: (ticker: string) => void;
   onSimulateContract?: (contract: OptionContractFlow) => void;
+  onNotify?: (message: string) => void;
   onArmAlert?: (params: {
     ticker: string;
     targetPrice: number;
@@ -98,14 +107,17 @@ export function WhaleFlowDesk({
   ctxMap,
   quoteMap,
   directoryMap,
+  pinnedTickers = [],
   onSelectTicker,
   onSimulateContract,
+  onNotify,
   onArmAlert,
 }: WhaleFlowDeskProps) {
   const [uoaFilter, setUoaFilter] = useState<UoaFilter>('ALL');
   const [dteBucket, setDteBucket] = useState<DteBucket>('ALL');
   const [minPrem, setMinPrem] = useState<PremBucket>(0);
   const [moneynessFilter, setMoneynessFilter] = useState<MoneynessFilter>('ALL');
+  const [watchlistOnly, setWatchlistOnly] = useState<boolean>(false);
   const [gexTicker, setGexTicker] = useState<string>('');
   const [customInput, setCustomInput] = useState<string>('');
   const [scanningCustom, setScanningCustom] = useState<boolean>(false);
@@ -118,6 +130,9 @@ export function WhaleFlowDesk({
     scannedAt: string;
   } | null>(null);
   const [refreshingFlow, setRefreshingFlow] = useState<boolean>(false);
+  const [tideHistory, setTideHistory] = useState<MarketTidePoint[]>(() =>
+    loadTodayMarketTideHistory(),
+  );
 
   // Live 24/7 Hyperliquid Whale Print Tape + Live Chime Ping
   const [tapePrints, setTapePrints] = useState<WhaleTapePrint[]>([]);
@@ -128,6 +143,22 @@ export function WhaleFlowDesk({
   const [lastWhalePing, setLastWhalePing] = useState<WhaleTapePrint | null>(null);
   const chimeThresholdRef = useRef<ChimeThreshold>(0);
   const lastChimeMsRef = useRef<number>(0);
+
+  const pinnedSet = useMemo(() => new Set(pinnedTickers), [pinnedTickers]);
+
+  const spySpotPx = useMemo(
+    () =>
+      quoteMap.SPY?.price ??
+      directoryMap.SPY?.lastSale ??
+      flowState?.summaries.find((s) => s.ticker === 'SPY')?.spotPrice ??
+      null,
+    [quoteMap, directoryMap, flowState],
+  );
+  const spySpotRef = useRef<number | null>(spySpotPx);
+
+  useEffect(() => {
+    spySpotRef.current = spySpotPx;
+  }, [spySpotPx]);
 
   useEffect(() => {
     chimeThresholdRef.current = chimeThreshold;
@@ -161,6 +192,13 @@ export function WhaleFlowDesk({
         controller.signal,
       );
       if (!active || controller.signal.aborted) return;
+      const callPrem = res.summaries.reduce((acc, s) => acc + s.callPremiumUsd, 0);
+      const putPrem = res.summaries.reduce((acc, s) => acc + s.putPremiumUsd, 0);
+      const spyFromChain =
+        res.summaries.find((s) => s.ticker === 'SPY')?.spotPrice ?? spySpotRef.current;
+      setTideHistory((prev) =>
+        appendMarketTideHistory(prev, callPrem, putPrem, spyFromChain),
+      );
       setFlowState({
         summaries: res.summaries,
         hotContracts: res.hotContracts,
@@ -252,6 +290,13 @@ export function WhaleFlowDesk({
     setRefreshingFlow(true);
     try {
       const res = await scanMarketOptionsFlow(WHALE_FLOW_LEADERS, true);
+      const callPrem = res.summaries.reduce((acc, s) => acc + s.callPremiumUsd, 0);
+      const putPrem = res.summaries.reduce((acc, s) => acc + s.putPremiumUsd, 0);
+      const spyFromChain =
+        res.summaries.find((s) => s.ticker === 'SPY')?.spotPrice ?? spySpotRef.current;
+      setTideHistory((prev) =>
+        appendMarketTideHistory(prev, callPrem, putPrem, spyFromChain),
+      );
       setFlowState({
         summaries: res.summaries,
         hotContracts: res.hotContracts,
@@ -298,13 +343,15 @@ export function WhaleFlowDesk({
     uoaFilter !== 'ALL' ||
     dteBucket !== 'ALL' ||
     minPrem !== 0 ||
-    moneynessFilter !== 'ALL';
+    moneynessFilter !== 'ALL' ||
+    watchlistOnly;
 
   const handleResetFilters = () => {
     setUoaFilter('ALL');
     setDteBucket('ALL');
     setMinPrem(0);
     setMoneynessFilter('ALL');
+    setWatchlistOnly(false);
   };
 
   const allSummaries = useMemo(() => {
@@ -331,6 +378,9 @@ export function WhaleFlowDesk({
       : base;
 
     return combined.filter((c) => {
+      if (watchlistOnly && pinnedSet.size > 0 && !pinnedSet.has(c.ticker)) {
+        return false;
+      }
       if (uoaFilter === 'CALL' && c.type !== 'CALL') return false;
       if (uoaFilter === 'PUT' && c.type !== 'PUT') return false;
       if (uoaFilter === 'LOTTO_0_7D' && c.dte > 7) return false;
@@ -349,15 +399,25 @@ export function WhaleFlowDesk({
       }
       return true;
     });
-  }, [flowState, customSummary, uoaFilter, dteBucket, minPrem, moneynessFilter]);
+  }, [
+    flowState,
+    customSummary,
+    uoaFilter,
+    dteBucket,
+    minPrem,
+    moneynessFilter,
+    watchlistOnly,
+    pinnedSet,
+  ]);
 
   const filteredTape = useMemo(
     () =>
       tapePrints
         .filter((p) => p.notionalUsd >= tapeMinUsd)
         .filter((p) => tapeSide === 'ALL' || p.side === tapeSide)
+        .filter((p) => !watchlistOnly || pinnedSet.size === 0 || pinnedSet.has(p.ticker))
         .slice(0, 45),
-    [tapePrints, tapeMinUsd, tapeSide],
+    [tapePrints, tapeMinUsd, tapeSide, watchlistOnly, pinnedSet],
   );
 
   const { tapeBuyUsd, tapeSellUsd } = useMemo(() => {
@@ -462,6 +522,15 @@ export function WhaleFlowDesk({
           </div>
         </div>
 
+        {/* Intraday Market Tide Dual-Line Timeline (Call Prem vs Put Prem + SPY) */}
+        <MarketTideChart
+          points={tideHistory}
+          liveCallPrem={marketTide.callPremiumUsd}
+          livePutPrem={marketTide.putPremiumUsd}
+          liveSpyPx={spySpotPx}
+          latestLabel={flowState?.scannedAt}
+        />
+
         {/* 6-Sector Flow Heatmap */}
         <div className="whale-sector-grid">
           {marketTide.sectors.map((sec) => {
@@ -509,6 +578,7 @@ export function WhaleFlowDesk({
         selectedTicker={gexTicker || undefined}
         onSelectProfileTicker={setGexTicker}
         onOpenTerminal={onSelectTicker}
+        onNotify={onNotify}
         onArmAlert={onArmAlert}
       />
 
@@ -577,6 +647,21 @@ export function WhaleFlowDesk({
 
             {/* Granular Screener Filters */}
             <div className="whale-pro-filters mono">
+              <button
+                type="button"
+                className={`watchlist-filter-pill mono${watchlistOnly ? ' active' : ''}`}
+                disabled={pinnedTickers.length === 0}
+                onClick={() => setWatchlistOnly((v) => !v)}
+                title={
+                  pinnedTickers.length > 0
+                    ? `Filter options & 24/7 tape to your ${pinnedTickers.length} pinned tickers`
+                    : 'Pin tickers in any War Room or Explorer to enable Watchlist filter'
+                }
+              >
+                <Star size={10} />
+                <span>WATCHLIST ({pinnedTickers.length})</span>
+              </button>
+
               <label className="whale-select-wrap">
                 <span className="whale-mp-k">DTE</span>
                 <select

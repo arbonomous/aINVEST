@@ -3,6 +3,7 @@ import {
   BellPlus,
   BookmarkCheck,
   BookmarkPlus,
+  Camera,
   Crosshair,
   Flame,
   ShieldAlert,
@@ -16,6 +17,7 @@ import {
 } from '../lib/dailyBreadEngine';
 import type { HlCandle } from '../lib/hyperliquidFeed';
 import type { NewsArticle } from '../lib/newsFeed';
+import { exportDailyBreadSnapshotCard } from '../lib/snapshotCard';
 import { fetchUniversalCandles, type MarketQuote } from '../lib/universalFeed';
 import type { ChartTradePlan } from './RealtimeCandleChart';
 
@@ -33,6 +35,7 @@ interface DailyBreadTickerCardProps {
   }) => void;
   onPlanUpdate?: (plan: ChartTradePlan | null) => void;
   onSelectPriceLevel: (price: number) => void;
+  onNotify?: (message: string) => void;
 }
 
 function fmtPx(n: number): string {
@@ -48,6 +51,7 @@ function DailyBreadTickerCardComponent({
   onArmAlert,
   onPlanUpdate,
   onSelectPriceLevel,
+  onNotify,
 }: DailyBreadTickerCardProps) {
   const [dataState, setDataState] = useState<{
     reqKey: string;
@@ -215,6 +219,23 @@ function DailyBreadTickerCardComponent({
                   <span>{isTracked ? 'TRACKED' : 'TRACK CALL'}</span>
                 </button>
               )}
+              <button
+                type="button"
+                className="whale-sim-btn mono"
+                onClick={() => {
+                  void exportDailyBreadSnapshotCard(call).then((res) => {
+                    if (res === 'copied') {
+                      onNotify?.(`Copied & saved ${call.ticker} AI Call PNG card`);
+                    } else if (res === 'downloaded') {
+                      onNotify?.(`Downloaded ${call.ticker} AI Call PNG card`);
+                    }
+                  });
+                }}
+                title={`Export ${call.ticker} AI Day-Trade Call PNG card`}
+              >
+                <Camera size={10} />
+                <span>PNG</span>
+              </button>
             </div>
 
             <p className="bread-thesis">{call.thesis}</p>

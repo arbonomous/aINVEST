@@ -1,20 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { AiIntelligencePanel } from './components/AiIntelligencePanel';
-import { AlertsDrawer } from './components/AlertsDrawer';
-import { DailyBreadDesk } from './components/DailyBreadDesk';
 import { DailyBreadTickerCard } from './components/DailyBreadTickerCard';
-import { ExecutionChartPanel } from './components/ExecutionChartPanel';
 import { FloorChatPanel } from './components/FloorChatPanel';
-import { LandingPage } from './components/LandingPage';
 import { LiveRealtimeRibbon } from './components/LiveRealtimeRibbon';
-import {
-  MarketExplorerModal,
-  type ExplorerTab,
-} from './components/MarketExplorerModal';
-import { OvernightRadarPanel } from './components/OvernightRadarPanel';
+import type { ExplorerTab } from './components/MarketExplorerModal';
 import { OptionsFlowTickerCard } from './components/OptionsFlowTickerCard';
-import { OptionsPayoffModal } from './components/OptionsPayoffModal';
 import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
 import { ScrollingTickerTape } from './components/ScrollingTickerTape';
@@ -22,8 +21,40 @@ import { TechnicalGaugePanel } from './components/TechnicalGaugePanel';
 import { TerminalFooter } from './components/TerminalFooter';
 import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
-import { WhaleFlowDesk } from './components/WhaleFlowDesk';
 import { resolveTickerMeta } from './data/tickers';
+
+const LandingPage = lazy(() =>
+  import('./components/LandingPage').then((m) => ({ default: m.LandingPage })),
+);
+const WhaleFlowDesk = lazy(() =>
+  import('./components/WhaleFlowDesk').then((m) => ({ default: m.WhaleFlowDesk })),
+);
+const DailyBreadDesk = lazy(() =>
+  import('./components/DailyBreadDesk').then((m) => ({ default: m.DailyBreadDesk })),
+);
+const OvernightRadarPanel = lazy(() =>
+  import('./components/OvernightRadarPanel').then((m) => ({
+    default: m.OvernightRadarPanel,
+  })),
+);
+const ExecutionChartPanel = lazy(() =>
+  import('./components/ExecutionChartPanel').then((m) => ({
+    default: m.ExecutionChartPanel,
+  })),
+);
+const MarketExplorerModal = lazy(() =>
+  import('./components/MarketExplorerModal').then((m) => ({
+    default: m.MarketExplorerModal,
+  })),
+);
+const AlertsDrawer = lazy(() =>
+  import('./components/AlertsDrawer').then((m) => ({ default: m.AlertsDrawer })),
+);
+const OptionsPayoffModal = lazy(() =>
+  import('./components/OptionsPayoffModal').then((m) => ({
+    default: m.OptionsPayoffModal,
+  })),
+);
 import type {
   ChartGexLevels,
   OptionContractFlow,
@@ -812,206 +843,230 @@ export function App() {
         onSelectTheme={handleSelectTheme}
       />
 
-      {activeView === 'home' ? (
-        <LandingPage
-          ctxMap={ctxMap}
-          quoteMap={quoteMap}
-          directory={directory}
-          directoryMap={directoryMap}
-          pinnedTickers={pinnedTickers}
-          themeId={themeId}
-          articles={articles}
-          liveNewsCount={liveNewsCount}
-          lastNewsUpdated={lastNewsUpdated}
-          refreshingNews={refreshingNews}
-          trackedTrades={trackedTrades}
-          onRefreshNews={() => void handleRefreshNews()}
-          onTrackCall={handleTrackCall}
-          onArmAlert={handleArmAlert}
-          onCloseTrade={handleCloseTrade}
-          onRemoveTrade={handleRemoveTrade}
-          onClearClosedTrades={handleClearClosedTrades}
-          onSelectTicker={handleSelectTicker}
-          onOpenExplorer={handleOpenExplorer}
-          onOpenDailyBread={() => handleSelectView('daily-bread')}
-          onTogglePin={handleTogglePin}
-        />
-      ) : activeView === 'whale-flow' ? (
-        <main className="landing-main daily-bread-page-main">
-          <WhaleFlowDesk
+      <Suspense
+        fallback={
+          <div className="route-loading-fallback mono">
+            Loading aINVEST desk…
+          </div>
+        }
+      >
+        {activeView === 'home' ? (
+          <LandingPage
             ctxMap={ctxMap}
             quoteMap={quoteMap}
+            directory={directory}
             directoryMap={directoryMap}
-            onSelectTicker={handleSelectTicker}
-            onSimulateContract={setSimContract}
-            onArmAlert={handleArmAlert}
-          />
-        </main>
-      ) : activeView === 'daily-bread' ? (
-        <main className="landing-main daily-bread-page-main">
-          <OvernightRadarPanel
-            variant="wide"
-            ctxMap={ctxMap}
-            quoteMap={quoteMap}
-            directoryMap={directoryMap}
-            onSelectTicker={handleSelectTicker}
-          />
-          <DailyBreadDesk
-            ctxMap={ctxMap}
-            quoteMap={quoteMap}
-            directoryMap={directoryMap}
-            breakingNews={articles}
+            pinnedTickers={pinnedTickers}
+            themeId={themeId}
+            articles={articles}
+            liveNewsCount={liveNewsCount}
+            lastNewsUpdated={lastNewsUpdated}
+            refreshingNews={refreshingNews}
             trackedTrades={trackedTrades}
+            onRefreshNews={() => void handleRefreshNews()}
             onTrackCall={handleTrackCall}
             onArmAlert={handleArmAlert}
             onCloseTrade={handleCloseTrade}
             onRemoveTrade={handleRemoveTrade}
             onClearClosedTrades={handleClearClosedTrades}
             onSelectTicker={handleSelectTicker}
-          />
-        </main>
-      ) : (
-        <main className="terminal-main">
-          {/* 1-Click War Room Switcher (Flagship + IPOs + User Pinned + Recent + Explorer Triggers) */}
-          <RoomSwitcherBar
-            activeTicker={meta.ticker}
-            ctxMap={ctxMap}
-            quoteMap={quoteMap}
-            directoryMap={directoryMap}
-            pinnedTickers={pinnedTickers}
-            recentTickers={recentTickers}
-            onSelectTicker={handleSelectTicker}
             onOpenExplorer={handleOpenExplorer}
+            onOpenDailyBread={() => handleSelectView('daily-bread')}
+            onTogglePin={handleTogglePin}
+            onNotify={showToast}
           />
+        ) : activeView === 'whale-flow' ? (
+          <main className="landing-main daily-bread-page-main">
+            <WhaleFlowDesk
+              ctxMap={ctxMap}
+              quoteMap={quoteMap}
+              directoryMap={directoryMap}
+              pinnedTickers={pinnedTickers}
+              onSelectTicker={handleSelectTicker}
+              onSimulateContract={setSimContract}
+              onNotify={showToast}
+              onArmAlert={handleArmAlert}
+            />
+          </main>
+        ) : activeView === 'daily-bread' ? (
+          <main className="landing-main daily-bread-page-main">
+            <OvernightRadarPanel
+              variant="wide"
+              ctxMap={ctxMap}
+              quoteMap={quoteMap}
+              directoryMap={directoryMap}
+              onSelectTicker={handleSelectTicker}
+            />
+            <DailyBreadDesk
+              ctxMap={ctxMap}
+              quoteMap={quoteMap}
+              directoryMap={directoryMap}
+              breakingNews={articles}
+              trackedTrades={trackedTrades}
+              pinnedTickers={pinnedTickers}
+              onTrackCall={handleTrackCall}
+              onArmAlert={handleArmAlert}
+              onCloseTrade={handleCloseTrade}
+              onRemoveTrade={handleRemoveTrade}
+              onClearClosedTrades={handleClearClosedTrades}
+              onSelectTicker={handleSelectTicker}
+              onNotify={showToast}
+            />
+          </main>
+        ) : (
+          <main className="terminal-main">
+            {/* 1-Click War Room Switcher (Flagship + IPOs + User Pinned + Recent + Explorer Triggers) */}
+            <RoomSwitcherBar
+              activeTicker={meta.ticker}
+              ctxMap={ctxMap}
+              quoteMap={quoteMap}
+              directoryMap={directoryMap}
+              pinnedTickers={pinnedTickers}
+              recentTickers={recentTickers}
+              onSelectTicker={handleSelectTicker}
+              onOpenExplorer={handleOpenExplorer}
+            />
 
-          {/* Active Stock / IPO Universal Live Price Ribbon */}
-          <LiveRealtimeRibbon
-            meta={meta}
-            initialHlCtx={activeHlCtx}
-            fallbackQuote={activeQuote}
-            isPinned={isPinned}
-            onTogglePin={() => handleTogglePin(meta.ticker)}
-            onLiveHlUpdate={handleLiveHlUpdate}
-            onLiveQuoteUpdate={handleLiveQuoteUpdate}
-            onSyncLivePrice={handleSelectPriceLevel}
-          />
+            {/* Active Stock / IPO Universal Live Price Ribbon */}
+            <LiveRealtimeRibbon
+              meta={meta}
+              initialHlCtx={activeHlCtx}
+              fallbackQuote={activeQuote}
+              isPinned={isPinned}
+              onTogglePin={() => handleTogglePin(meta.ticker)}
+              onLiveHlUpdate={handleLiveHlUpdate}
+              onLiveQuoteUpdate={handleLiveQuoteUpdate}
+              onSyncLivePrice={handleSelectPriceLevel}
+            />
 
-          {/* Main 70/30 Terminal Bento Grid */}
-          <div className="workspace-grid">
-            <div className="chart-column">
-              <ExecutionChartPanel
-                meta={meta}
-                prevDayPx={activeQuote?.prevClose ?? null}
-                themeId={themeId}
-                tradePlan={activeTradePlan}
-                gexLevels={activeGexLevels}
-                movingNews={activeMovingNews}
-                onQuoteDiscovered={handleLiveQuoteUpdate}
-              />
-              <FloorChatPanel
-                key={meta.ticker}
-                ticker={meta.ticker}
-                livePrice={activeQuote?.price ?? null}
-                onSelectPriceLevel={handleSelectPriceLevel}
-              />
+            {/* Main 70/30 Terminal Bento Grid */}
+            <div className="workspace-grid">
+              <div className="chart-column">
+                <Suspense
+                  fallback={
+                    <div className="terminal-card route-loading-fallback mono">
+                      Loading live candlestick chart…
+                    </div>
+                  }
+                >
+                  <ExecutionChartPanel
+                    meta={meta}
+                    prevDayPx={activeQuote?.prevClose ?? null}
+                    themeId={themeId}
+                    tradePlan={activeTradePlan}
+                    gexLevels={activeGexLevels}
+                    movingNews={activeMovingNews}
+                    onQuoteDiscovered={handleLiveQuoteUpdate}
+                  />
+                </Suspense>
+                <FloorChatPanel
+                  key={meta.ticker}
+                  ticker={meta.ticker}
+                  livePrice={activeQuote?.price ?? null}
+                  onSelectPriceLevel={handleSelectPriceLevel}
+                />
+              </div>
+
+              <aside
+                className="intelligence-column"
+                aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
+              >
+                {/* Panel A — Daily Bread Live AI Day-Trade Call */}
+                <DailyBreadTickerCard
+                  meta={meta}
+                  liveQuote={activeQuote}
+                  breakingNews={articles}
+                  isTracked={isActiveCallTracked}
+                  onTrackCall={handleTrackCall}
+                  onArmAlert={handleArmAlert}
+                  onPlanUpdate={setActiveTradePlan}
+                  onSelectPriceLevel={handleSelectPriceLevel}
+                  onNotify={showToast}
+                />
+
+                {/* Panel B — Unusual Options Flow, GEX Walls & Max Pain */}
+                <OptionsFlowTickerCard
+                  meta={meta}
+                  livePrice={activeQuote?.price ?? null}
+                  onSelectPriceLevel={handleSelectPriceLevel}
+                  onOptionsLevelsUpdate={setActiveGexLevels}
+                  onSimulateContract={setSimContract}
+                  onArmAlert={handleArmAlert}
+                />
+
+                {/* Panel C — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
+                <TechnicalGaugePanel meta={meta} themeId={themeId} />
+
+                {/* Panel D — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
+                <AiIntelligencePanel
+                  meta={meta}
+                  liveQuote={activeQuote}
+                  onSelectPriceLevel={handleSelectPriceLevel}
+                />
+
+                {/* Panel E — Dynamic Valuation & Position P&L Calculator */}
+                <ValuationCalculatorPanel
+                  meta={meta}
+                  livePrice={activeQuote?.price ?? null}
+                  referencePrice={meta.referencePrice ?? activeQuote?.prevClose ?? null}
+                  priceInput={calcPriceInput}
+                  onPriceInputChange={handleCalcPriceChange}
+                />
+              </aside>
             </div>
-
-            <aside
-              className="intelligence-column"
-              aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
-            >
-              {/* Panel A — Daily Bread Live AI Day-Trade Call */}
-              <DailyBreadTickerCard
-                meta={meta}
-                liveQuote={activeQuote}
-                breakingNews={articles}
-                isTracked={isActiveCallTracked}
-                onTrackCall={handleTrackCall}
-                onArmAlert={handleArmAlert}
-                onPlanUpdate={setActiveTradePlan}
-                onSelectPriceLevel={handleSelectPriceLevel}
-              />
-
-              {/* Panel B — Unusual Options Flow, GEX Walls & Max Pain */}
-              <OptionsFlowTickerCard
-                meta={meta}
-                livePrice={activeQuote?.price ?? null}
-                onSelectPriceLevel={handleSelectPriceLevel}
-                onOptionsLevelsUpdate={setActiveGexLevels}
-                onSimulateContract={setSimContract}
-                onArmAlert={handleArmAlert}
-              />
-
-              {/* Panel C — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
-              <TechnicalGaugePanel meta={meta} themeId={themeId} />
-
-              {/* Panel D — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
-              <AiIntelligencePanel
-                meta={meta}
-                liveQuote={activeQuote}
-                onSelectPriceLevel={handleSelectPriceLevel}
-              />
-
-              {/* Panel E — Dynamic Valuation & Position P&L Calculator */}
-              <ValuationCalculatorPanel
-                meta={meta}
-                livePrice={activeQuote?.price ?? null}
-                referencePrice={meta.referencePrice ?? activeQuote?.prevClose ?? null}
-                priceInput={calcPriceInput}
-                onPriceInputChange={handleCalcPriceChange}
-              />
-            </aside>
-          </div>
-        </main>
-      )}
+          </main>
+        )}
+      </Suspense>
 
       <TerminalFooter meta={meta} />
 
-      {/* Universal All Stocks & IPOs Explorer Modal */}
-      {explorerOpen && (
-        <MarketExplorerModal
-          open={explorerOpen}
-          initialTab={explorerTab}
-          activeTicker={meta.ticker}
-          ctxMap={ctxMap}
-          directory={directory}
-          directoryMap={directoryMap}
-          directoryLoading={directoryLoading}
-          pinnedTickers={pinnedTickers}
-          onTogglePin={handleTogglePin}
-          onSelectTicker={handleSelectTicker}
-          onClose={() => setExplorerOpen(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {/* Universal All Stocks & IPOs Explorer Modal */}
+        {explorerOpen && (
+          <MarketExplorerModal
+            open={explorerOpen}
+            initialTab={explorerTab}
+            activeTicker={meta.ticker}
+            ctxMap={ctxMap}
+            directory={directory}
+            directoryMap={directoryMap}
+            directoryLoading={directoryLoading}
+            pinnedTickers={pinnedTickers}
+            onTogglePin={handleTogglePin}
+            onSelectTicker={handleSelectTicker}
+            onClose={() => setExplorerOpen(false)}
+          />
+        )}
 
-      {/* Free Live Price Alerts Manager Modal */}
-      {alertsDrawerOpen && (
-        <AlertsDrawer
-          open={alertsDrawerOpen}
-          defaultTicker={meta.ticker}
-          ctxMap={ctxMap}
-          quoteMap={quoteMap}
-          directoryMap={directoryMap}
-          alerts={priceAlerts}
-          soundEnabled={alertSoundEnabled}
-          onToggleSound={handleToggleAlertSound}
-          onAddAlert={handleArmAlert}
-          onDeleteAlert={handleDeleteAlert}
-          onClearTriggered={handleClearTriggeredAlerts}
-          onSelectTicker={handleSelectTicker}
-          onClose={() => setAlertsDrawerOpen(false)}
-        />
-      )}
+        {/* Free Live Price Alerts Manager Modal */}
+        {alertsDrawerOpen && (
+          <AlertsDrawer
+            open={alertsDrawerOpen}
+            defaultTicker={meta.ticker}
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            alerts={priceAlerts}
+            soundEnabled={alertSoundEnabled}
+            onToggleSound={handleToggleAlertSound}
+            onAddAlert={handleArmAlert}
+            onDeleteAlert={handleDeleteAlert}
+            onClearTriggered={handleClearTriggeredAlerts}
+            onSelectTicker={handleSelectTicker}
+            onClose={() => setAlertsDrawerOpen(false)}
+          />
+        )}
 
-      {/* 1-Click Black-Scholes Options P&L Heatmap & Simulator Modal */}
-      {simContract && (
-        <OptionsPayoffModal
-          key={simContract.id}
-          contract={simContract}
-          onClose={() => setSimContract(null)}
-          onCopySuccess={showToast}
-        />
-      )}
+        {/* 1-Click Multi-Leg Options Strategy & P&L Heatmap Simulator Modal */}
+        {simContract && (
+          <OptionsPayoffModal
+            key={simContract.id}
+            contract={simContract}
+            onClose={() => setSimContract(null)}
+            onCopySuccess={showToast}
+          />
+        )}
+      </Suspense>
 
       {toastMessage && (
         <div className="toast-container" role="status" aria-live="polite">
