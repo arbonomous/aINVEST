@@ -1,4 +1,9 @@
 import type { DailyBreadCall } from './dailyBreadEngine';
+import type {
+  ClusterBuySignal,
+  CongressTrade,
+  ShortSqueezeRow,
+} from './insidersEngine';
 import type { MultiLegHeatmapResult } from './optionsPricing';
 import type { TickerOptionsSummary } from './whaleFlowEngine';
 
@@ -625,4 +630,316 @@ export async function exportOptionsPayoffSnapshotCard(params: {
     canvas,
     `aINVEST_${ticker}_${strategyLabel.replace(/\s+/g, '_')}.png`,
   );
+}
+
+export async function exportCongressSnapshotCard(
+  trade: CongressTrade,
+): Promise<SnapshotResult> {
+  const created = createCardCanvas();
+  if (!created) return 'failed';
+  const { canvas, ctx } = created;
+
+  const isBuy = trade.action === 'BUY';
+  const actionColor = isBuy ? '#10B981' : '#F43F5E';
+  const partyColor =
+    trade.party === 'D' ? '#38BDF8' : trade.party === 'R' ? '#F43F5E' : '#F59E0B';
+
+  // Badge
+  ctx.fillStyle = isBuy ? 'rgba(16,185,129,0.16)' : 'rgba(244,63,94,0.16)';
+  ctx.strokeStyle = actionColor;
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(42, 108, 224, 34);
+  ctx.strokeRect(42, 108, 224, 34);
+  ctx.font = '700 14px "JetBrains Mono", monospace';
+  ctx.fillStyle = actionColor;
+  ctx.fillText(`CONGRESS STOCK ACT • ${trade.action}`, 54, 130);
+
+  // Politician Headline
+  ctx.font = '700 38px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillText(`${trade.politician} (${trade.party}-${trade.state})`, 42, 194);
+
+  ctx.font = '700 22px "JetBrains Mono", monospace';
+  ctx.fillStyle = partyColor;
+  ctx.fillText(
+    `${trade.chamber.toUpperCase()}  •  ${trade.committees.join(' / ').toUpperCase()}`,
+    42,
+    228,
+  );
+
+  // 4 KPI Boxes
+  const boxW = (W - 84 - 3 * 14) / 4;
+  const boxY = 264;
+  drawKpiBox(ctx, 42, boxY, boxW, 84, 'TICKER', `$${trade.ticker}`, '#10B981');
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 1,
+    boxY,
+    boxW,
+    84,
+    'DISCLOSED SIZE',
+    trade.amountLabel.replace(/ – /g, '–'),
+    actionColor,
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 2,
+    boxY,
+    boxW,
+    84,
+    'TRADE DATE',
+    trade.tradeDate,
+    '#F8FAFC',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 3,
+    boxY,
+    boxW,
+    84,
+    'DISCLOSURE LAG',
+    `+${trade.lagDays}d (Filed ${trade.filedDate})`,
+    '#F59E0B',
+  );
+
+  // Asset Details Box
+  ctx.fillStyle = '#111622';
+  ctx.strokeStyle = '#1E2636';
+  ctx.fillRect(42, 376, W - 84, 152);
+  ctx.strokeRect(42, 376, W - 84, 152);
+
+  ctx.font = '700 13px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText('OFFICIAL DISCLOSURE SUMMARY', 62, 412);
+
+  ctx.font = '600 22px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#E2E8F0';
+  ctx.fillText(
+    `${trade.politician} disclosed a ${trade.action} of ${trade.assetName} ($${trade.ticker})`,
+    62,
+    454,
+  );
+  ctx.font = '500 15px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText(
+    `Range: ${trade.amountLabel}  •  Trade ${trade.tradeDate}  •  Filed ${trade.filedDate}`,
+    62,
+    494,
+  );
+
+  drawFooter(
+    ctx,
+    'US HOUSE & SENATE STOCK ACT DISCLOSURES • PUBLIC FILINGS TRACKED BY aINVEST • NOT FINANCIAL ADVICE',
+  );
+
+  return emitCanvasPng(
+    canvas,
+    `aINVEST_CONGRESS_${trade.ticker}_${trade.politician.replace(/\s+/g, '_')}.png`,
+  );
+}
+
+export async function exportClusterBuySnapshotCard(
+  cluster: ClusterBuySignal,
+): Promise<SnapshotResult> {
+  const created = createCardCanvas();
+  if (!created) return 'failed';
+  const { canvas, ctx } = created;
+
+  ctx.fillStyle = 'rgba(16,185,129,0.16)';
+  ctx.strokeStyle = '#10B981';
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(42, 108, 250, 34);
+  ctx.strokeRect(42, 108, 250, 34);
+  ctx.font = '700 14px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#10B981';
+  ctx.fillText('SEC FORM 4 • CLUSTER BUY ALERT', 54, 130);
+
+  ctx.font = '700 38px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillText(`$${cluster.ticker} — ${cluster.companyName}`, 42, 194);
+
+  const boxW = (W - 84 - 2 * 14) / 3;
+  drawKpiBox(
+    ctx,
+    42,
+    220,
+    boxW,
+    78,
+    'DISTINCT INSIDERS BUYING',
+    `${cluster.insiderCount} EXECUTIVES / DIRECTORS`,
+    '#10B981',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 1,
+    220,
+    boxW,
+    78,
+    'TOTAL OPEN-MARKET BUY',
+    fmtUsdCompact(cluster.totalBuyUsd).replace(/^\+/, ''),
+    '#F59E0B',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 2,
+    220,
+    boxW,
+    78,
+    'LATEST FILING DATE',
+    cluster.latestDate,
+    '#F8FAFC',
+  );
+
+  ctx.font = '700 13px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText('PARTICIPATING INSIDERS (14-DAY WINDOW)', 42, 336);
+
+  cluster.insiders.slice(0, 4).forEach((ins, i) => {
+    const y = 354 + i * 44;
+    ctx.fillStyle = '#111622';
+    ctx.strokeStyle = '#1E2636';
+    ctx.fillRect(42, y, W - 84, 36);
+    ctx.strokeRect(42, y, W - 84, 36);
+
+    ctx.font = '700 15px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#F8FAFC';
+    ctx.fillText(ins.name, 58, y + 23);
+
+    ctx.font = '600 13px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillText(ins.role, 390, y + 23);
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#10B981';
+    ctx.fillText(
+      `BUY ${fmtUsdCompact(ins.valueUsd).replace(/^\+/, '')}`,
+      W - 58,
+      y + 23,
+    );
+    ctx.textAlign = 'left';
+  });
+
+  drawFooter(
+    ctx,
+    'SEC EDGAR FORM 4 OPEN-MARKET PURCHASES • CLUSTER BUY DETECTOR • INFORMATIONAL ONLY',
+  );
+
+  return emitCanvasPng(canvas, `aINVEST_${cluster.ticker}_CLUSTER_BUY.png`);
+}
+
+export async function exportSqueezeSnapshotCard(
+  row: ShortSqueezeRow,
+): Promise<SnapshotResult> {
+  const created = createCardCanvas();
+  if (!created) return 'failed';
+  const { canvas, ctx } = created;
+
+  const toneColor =
+    row.regime === 'EXTREME'
+      ? '#F43F5E'
+      : row.regime === 'HIGH'
+        ? '#F59E0B'
+        : '#38BDF8';
+
+  ctx.fillStyle = 'rgba(244,63,94,0.16)';
+  ctx.strokeStyle = toneColor;
+  ctx.lineWidth = 1.5;
+  ctx.fillRect(42, 108, 256, 34);
+  ctx.strokeRect(42, 108, 256, 34);
+  ctx.font = '700 14px "JetBrains Mono", monospace';
+  ctx.fillStyle = toneColor;
+  ctx.fillText(`SHORT SQUEEZE RADAR • ${row.regime}`, 54, 130);
+
+  ctx.font = '700 40px Inter, system-ui, sans-serif';
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillText(`$${row.ticker} — ${row.companyName}`, 42, 198);
+
+  ctx.textAlign = 'right';
+  ctx.font = '700 32px "JetBrains Mono", monospace';
+  ctx.fillStyle = toneColor;
+  ctx.fillText(`SCORE ${row.squeezeScore}/100`, W - 42, 196);
+  ctx.textAlign = 'left';
+
+  // Visual Score Bar
+  ctx.fillStyle = '#111622';
+  ctx.fillRect(42, 220, W - 84, 18);
+  ctx.fillStyle = toneColor;
+  ctx.fillRect(42, 220, Math.round(((W - 84) * row.squeezeScore) / 100), 18);
+
+  const boxW = (W - 84 - 3 * 14) / 4;
+  const boxY = 264;
+  const exemptPct =
+    row.totalVolume > 0
+      ? ((row.shortExemptVolume / row.totalVolume) * 100).toFixed(2)
+      : '0.00';
+
+  drawKpiBox(
+    ctx,
+    42,
+    boxY,
+    boxW,
+    84,
+    'FINRA SHORT VOL %',
+    `${row.shortVolPct.toFixed(1)}%`,
+    row.shortVolPct >= 55 ? '#F43F5E' : '#F59E0B',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 1,
+    boxY,
+    boxW,
+    84,
+    'REG SHO EXEMPT %',
+    `${exemptPct}%`,
+    '#F59E0B',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 2,
+    boxY,
+    boxW,
+    84,
+    'SEC FTD PRESSURE',
+    row.ftdUsd > 0 ? fmtUsdCompact(row.ftdUsd).replace(/^\+/, '') : '—',
+    '#A78BFA',
+  );
+  drawKpiBox(
+    ctx,
+    42 + (boxW + 14) * 3,
+    boxY,
+    boxW,
+    84,
+    'FINRA TRADE DATE',
+    row.tradeDate,
+    '#F8FAFC',
+  );
+
+  // Signals Box
+  ctx.fillStyle = '#111622';
+  ctx.strokeStyle = '#1E2636';
+  ctx.fillRect(42, 380, W - 84, 130);
+  ctx.strokeRect(42, 380, W - 84, 130);
+
+  ctx.font = '700 13px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText('ACTIVE SHORT-PRESSURE SIGNALS', 62, 414);
+
+  ctx.font = '700 20px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#E2E8F0';
+  ctx.fillText(row.signals.join('   •   '), 62, 462);
+
+  ctx.font = '500 14px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText(
+    `Short Vol: ${row.shortVolume.toLocaleString()} / Total Vol: ${row.totalVolume.toLocaleString()}  •  FTD Shares: ${row.ftdShares.toLocaleString()}`,
+    62,
+    494,
+  );
+
+  drawFooter(
+    ctx,
+    'FINRA DAILY SHORT SALE VOLUME & SEC FAILURES-TO-DELIVER (FTD) • NOT FINANCIAL ADVICE',
+  );
+
+  return emitCanvasPng(canvas, `aINVEST_${row.ticker}_SQUEEZE_RADAR.png`);
 }

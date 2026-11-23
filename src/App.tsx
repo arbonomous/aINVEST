@@ -11,6 +11,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { AiIntelligencePanel } from './components/AiIntelligencePanel';
 import { DailyBreadTickerCard } from './components/DailyBreadTickerCard';
 import { FloorChatPanel } from './components/FloorChatPanel';
+import { InsiderSqueezeTickerCard } from './components/InsiderSqueezeTickerCard';
 import { LiveRealtimeRibbon } from './components/LiveRealtimeRibbon';
 import type { ExplorerTab } from './components/MarketExplorerModal';
 import { OptionsFlowTickerCard } from './components/OptionsFlowTickerCard';
@@ -28,6 +29,9 @@ const LandingPage = lazy(() =>
 );
 const WhaleFlowDesk = lazy(() =>
   import('./components/WhaleFlowDesk').then((m) => ({ default: m.WhaleFlowDesk })),
+);
+const InsidersDesk = lazy(() =>
+  import('./components/InsidersDesk').then((m) => ({ default: m.InsidersDesk })),
 );
 const DailyBreadDesk = lazy(() =>
   import('./components/DailyBreadDesk').then((m) => ({ default: m.DailyBreadDesk })),
@@ -124,6 +128,9 @@ function getInitialRouteFromUrl(): { view: AppView; ticker: string } {
     if (v === 'whale-flow') {
       return { view: 'whale-flow', ticker: 'ANT' };
     }
+    if (v === 'insiders') {
+      return { view: 'insiders', ticker: 'ANT' };
+    }
   } catch {
     // Ignore
   }
@@ -201,6 +208,7 @@ export function App() {
   const [simContract, setSimContract] = useState<OptionContractFlow | null>(
     null,
   );
+  const [insidersSearch, setInsidersSearch] = useState<string>('');
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>(() =>
     loadPriceAlerts(),
   );
@@ -287,6 +295,28 @@ export function App() {
         }
         if (url.searchParams.get('view') !== 'whale-flow') {
           url.searchParams.set('view', 'whale-flow');
+          changed = true;
+        }
+        if (changed) {
+          window.history.replaceState({}, '', url.toString());
+        }
+      } catch {
+        // Ignore history API restrictions
+      }
+      return;
+    }
+
+    if (activeView === 'insiders') {
+      document.title = 'Insiders & Short Squeeze — Congress & Form 4 | aINVEST';
+      try {
+        const url = new URL(window.location.href);
+        let changed = false;
+        if (url.searchParams.has('ticker')) {
+          url.searchParams.delete('ticker');
+          changed = true;
+        }
+        if (url.searchParams.get('view') !== 'insiders') {
+          url.searchParams.set('view', 'insiders');
           changed = true;
         }
         if (changed) {
@@ -576,7 +606,14 @@ export function App() {
   }, []);
 
   const handleSelectView = useCallback((view: AppView) => {
+    if (view === 'insiders') setInsidersSearch('');
     setActiveView(view);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, []);
+
+  const handleOpenInsidersForTicker = useCallback((ticker: string) => {
+    setInsidersSearch(ticker.trim().toUpperCase());
+    setActiveView('insiders');
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, []);
 
@@ -757,9 +794,11 @@ export function App() {
           ? 'aINVEST Markets link copied'
           : activeView === 'whale-flow'
             ? 'Whale Flow Terminal link copied'
-            : activeView === 'daily-bread'
-              ? 'Daily Bread AI Desk link copied'
-              : `${meta.ticker} War Room link copied`,
+            : activeView === 'insiders'
+              ? 'Insiders & Short Squeeze link copied'
+              : activeView === 'daily-bread'
+                ? 'Daily Bread AI Desk link copied'
+                : `${meta.ticker} War Room link copied`,
       );
     } else {
       showToast('Copy URL from address bar');
@@ -888,6 +927,16 @@ export function App() {
               onArmAlert={handleArmAlert}
             />
           </main>
+        ) : activeView === 'insiders' ? (
+          <main className="landing-main daily-bread-page-main">
+            <InsidersDesk
+              key={insidersSearch || 'all'}
+              pinnedTickers={pinnedTickers}
+              initialSearch={insidersSearch}
+              onSelectTicker={handleSelectTicker}
+              onNotify={showToast}
+            />
+          </main>
         ) : activeView === 'daily-bread' ? (
           <main className="landing-main daily-bread-page-main">
             <OvernightRadarPanel
@@ -992,6 +1041,12 @@ export function App() {
                   onOptionsLevelsUpdate={setActiveGexLevels}
                   onSimulateContract={setSimContract}
                   onArmAlert={handleArmAlert}
+                />
+
+                {/* Panel C — Congress, SEC Form 4 Cluster Buys & FINRA Short Squeeze */}
+                <InsiderSqueezeTickerCard
+                  meta={meta}
+                  onOpenInsidersForTicker={handleOpenInsidersForTicker}
                 />
 
                 {/* Panel C — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}

@@ -1,0 +1,2690 @@
+{
+  "generatedAt": "2026-11-23T17:17:50.851Z",
+  "meta": {
+    "congress": {
+      "syncedAt": "2026-11-23T14:00:00.000Z",
+      "sourceLabel": "US House & Senate STOCK Act",
+      "mode": "SNAPSHOT",
+      "recordCount": 14
+    },
+    "form4": {
+      "syncedAt": "2026-11-23T14:00:00.000Z",
+      "sourceLabel": "SEC EDGAR Form 4",
+      "mode": "SNAPSHOT",
+      "recordCount": 16
+    },
+    "squeeze": {
+      "syncedAt": "2026-11-23T17:17:50.851Z",
+      "sourceLabel": "FINRA Reg SHO & SEC FTD",
+      "mode": "LIVE OFFICIAL",
+      "recordCount": 120
+    }
+  },
+  "congress": [
+    {
+      "id": "cong-pelosi-nvda-1",
+      "politician": "Nancy Pelosi",
+      "party": "D",
+      "chamber": "House",
+      "state": "CA",
+      "committees": [
+        "Speaker Emerita",
+        "Tech Policy"
+      ],
+      "ticker": "NVDA",
+      "assetName": "NVIDIA Corp.",
+      "action": "BUY",
+      "amountLabel": "$1,000,001 – $5,000,000",
+      "amountMinUsd": 1000001,
+      "amountMaxUsd": 5000000,
+      "tradeDate": "2026-11-10",
+      "filedDate": "2026-11-20",
+      "lagDays": 10,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-pelosi-avgo-2",
+      "politician": "Nancy Pelosi",
+      "party": "D",
+      "chamber": "House",
+      "state": "CA",
+      "committees": [
+        "Speaker Emerita",
+        "Tech Policy"
+      ],
+      "ticker": "AVGO",
+      "assetName": "Broadcom Inc.",
+      "action": "BUY",
+      "amountLabel": "$500,001 – $1,000,000",
+      "amountMinUsd": 500001,
+      "amountMaxUsd": 1000000,
+      "tradeDate": "2026-11-08",
+      "filedDate": "2026-11-19",
+      "lagDays": 11,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-tuberville-pltr-3",
+      "politician": "Tommy Tuberville",
+      "party": "R",
+      "chamber": "Senate",
+      "state": "AL",
+      "committees": [
+        "Armed Services",
+        "Agriculture"
+      ],
+      "ticker": "PLTR",
+      "assetName": "Palantir Technologies",
+      "action": "BUY",
+      "amountLabel": "$100,001 – $250,000",
+      "amountMinUsd": 100001,
+      "amountMaxUsd": 250000,
+      "tradeDate": "2026-11-12",
+      "filedDate": "2026-11-21",
+      "lagDays": 9,
+      "sourceUrl": "https://efdsearch.senate.gov/search/home/"
+    },
+    {
+      "id": "cong-tuberville-msft-4",
+      "politician": "Tommy Tuberville",
+      "party": "R",
+      "chamber": "Senate",
+      "state": "AL",
+      "committees": [
+        "Armed Services",
+        "Agriculture"
+      ],
+      "ticker": "MSFT",
+      "assetName": "Microsoft Corp.",
+      "action": "BUY",
+      "amountLabel": "$250,001 – $500,000",
+      "amountMinUsd": 250001,
+      "amountMaxUsd": 500000,
+      "tradeDate": "2026-11-06",
+      "filedDate": "2026-11-18",
+      "lagDays": 12,
+      "sourceUrl": "https://efdsearch.senate.gov/search/home/"
+    },
+    {
+      "id": "cong-mccaul-amzn-5",
+      "politician": "Michael McCaul",
+      "party": "R",
+      "chamber": "House",
+      "state": "TX",
+      "committees": [
+        "Foreign Affairs",
+        "Homeland Security"
+      ],
+      "ticker": "AMZN",
+      "assetName": "Amazon.com Inc.",
+      "action": "BUY",
+      "amountLabel": "$250,001 – $500,000",
+      "amountMinUsd": 250001,
+      "amountMaxUsd": 500000,
+      "tradeDate": "2026-11-11",
+      "filedDate": "2026-11-20",
+      "lagDays": 9,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-khanna-nvda-6",
+      "politician": "Ro Khanna",
+      "party": "D",
+      "chamber": "House",
+      "state": "CA",
+      "committees": [
+        "Armed Services",
+        "Oversight"
+      ],
+      "ticker": "NVDA",
+      "assetName": "NVIDIA Corp.",
+      "action": "BUY",
+      "amountLabel": "$50,001 – $100,000",
+      "amountMinUsd": 50001,
+      "amountMaxUsd": 100000,
+      "tradeDate": "2026-11-14",
+      "filedDate": "2026-11-21",
+      "lagDays": 7,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-gottheimer-meta-7",
+      "politician": "Josh Gottheimer",
+      "party": "D",
+      "chamber": "House",
+      "state": "NJ",
+      "committees": [
+        "Financial Services",
+        "Intelligence"
+      ],
+      "ticker": "META",
+      "assetName": "Meta Platforms",
+      "action": "BUY",
+      "amountLabel": "$100,001 – $250,000",
+      "amountMinUsd": 100001,
+      "amountMaxUsd": 250000,
+      "tradeDate": "2026-11-13",
+      "filedDate": "2026-11-21",
+      "lagDays": 8,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-greene-tsla-8",
+      "politician": "Marjorie Taylor Greene",
+      "party": "R",
+      "chamber": "House",
+      "state": "GA",
+      "committees": [
+        "Homeland Security",
+        "Oversight"
+      ],
+      "ticker": "TSLA",
+      "assetName": "Tesla Inc.",
+      "action": "BUY",
+      "amountLabel": "$50,001 – $100,000",
+      "amountMinUsd": 50001,
+      "amountMaxUsd": 100000,
+      "tradeDate": "2026-11-09",
+      "filedDate": "2026-11-19",
+      "lagDays": 10,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-mullin-spcx-9",
+      "politician": "Markwayne Mullin",
+      "party": "R",
+      "chamber": "Senate",
+      "state": "OK",
+      "committees": [
+        "Armed Services",
+        "Appropriations"
+      ],
+      "ticker": "SPCX",
+      "assetName": "SpaceX",
+      "action": "BUY",
+      "amountLabel": "$100,001 – $250,000",
+      "amountMinUsd": 100001,
+      "amountMaxUsd": 250000,
+      "tradeDate": "2026-11-07",
+      "filedDate": "2026-11-18",
+      "lagDays": 11,
+      "sourceUrl": "https://efdsearch.senate.gov/search/home/"
+    },
+    {
+      "id": "cong-crenshaw-coin-10",
+      "politician": "Dan Crenshaw",
+      "party": "R",
+      "chamber": "House",
+      "state": "TX",
+      "committees": [
+        "Energy & Commerce",
+        "Intelligence"
+      ],
+      "ticker": "COIN",
+      "assetName": "Coinbase Global",
+      "action": "BUY",
+      "amountLabel": "$50,001 – $100,000",
+      "amountMinUsd": 50001,
+      "amountMaxUsd": 100000,
+      "tradeDate": "2026-11-12",
+      "filedDate": "2026-11-20",
+      "lagDays": 8,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-mccaul-aapl-11",
+      "politician": "Michael McCaul",
+      "party": "R",
+      "chamber": "House",
+      "state": "TX",
+      "committees": [
+        "Foreign Affairs",
+        "Homeland Security"
+      ],
+      "ticker": "AAPL",
+      "assetName": "Apple Inc.",
+      "action": "SELL",
+      "amountLabel": "$250,001 – $500,000",
+      "amountMinUsd": 250001,
+      "amountMaxUsd": 500000,
+      "tradeDate": "2026-11-05",
+      "filedDate": "2026-11-17",
+      "lagDays": 12,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-pelosi-googl-12",
+      "politician": "Nancy Pelosi",
+      "party": "D",
+      "chamber": "House",
+      "state": "CA",
+      "committees": [
+        "Speaker Emerita",
+        "Tech Policy"
+      ],
+      "ticker": "GOOGL",
+      "assetName": "Alphabet Inc.",
+      "action": "BUY",
+      "amountLabel": "$250,001 – $500,000",
+      "amountMinUsd": 250001,
+      "amountMaxUsd": 500000,
+      "tradeDate": "2026-11-04",
+      "filedDate": "2026-11-16",
+      "lagDays": 12,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    },
+    {
+      "id": "cong-capito-jpm-13",
+      "politician": "Shelley Moore Capito",
+      "party": "R",
+      "chamber": "Senate",
+      "state": "WV",
+      "committees": [
+        "Appropriations",
+        "Commerce"
+      ],
+      "ticker": "JPM",
+      "assetName": "JPMorgan Chase",
+      "action": "SELL",
+      "amountLabel": "$50,001 – $100,000",
+      "amountMinUsd": 50001,
+      "amountMaxUsd": 100000,
+      "tradeDate": "2026-11-03",
+      "filedDate": "2026-11-15",
+      "lagDays": 12,
+      "sourceUrl": "https://efdsearch.senate.gov/search/home/"
+    },
+    {
+      "id": "cong-khanna-amd-14",
+      "politician": "Ro Khanna",
+      "party": "D",
+      "chamber": "House",
+      "state": "CA",
+      "committees": [
+        "Armed Services",
+        "Oversight"
+      ],
+      "ticker": "AMD",
+      "assetName": "Advanced Micro Devices",
+      "action": "SELL",
+      "amountLabel": "$15,001 – $50,000",
+      "amountMinUsd": 15001,
+      "amountMaxUsd": 50000,
+      "tradeDate": "2026-11-08",
+      "filedDate": "2026-11-18",
+      "lagDays": 10,
+      "sourceUrl": "https://disclosures-clerk.house.gov/FinancialDisclosure"
+    }
+  ],
+  "form4": [
+    {
+      "id": "f4-nvda-1",
+      "ticker": "NVDA",
+      "companyName": "NVIDIA Corp.",
+      "insiderName": "Mark A. Stevens",
+      "role": "Director",
+      "isCsuite": false,
+      "action": "BUY",
+      "shares": 35000,
+      "price": 134.8,
+      "valueUsd": 4718000,
+      "tradeDate": "2026-11-19",
+      "filedDate": "2026-11-21",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NVDA&type=4"
+    },
+    {
+      "id": "f4-nvda-2",
+      "ticker": "NVDA",
+      "companyName": "NVIDIA Corp.",
+      "insiderName": "Harvey C. Jones",
+      "role": "Director",
+      "isCsuite": false,
+      "action": "BUY",
+      "shares": 14000,
+      "price": 135.4,
+      "valueUsd": 1895600,
+      "tradeDate": "2026-11-18",
+      "filedDate": "2026-11-20",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NVDA&type=4"
+    },
+    {
+      "id": "f4-nvda-3",
+      "ticker": "NVDA",
+      "companyName": "NVIDIA Corp.",
+      "insiderName": "Colette Kress",
+      "role": "EVP & CFO",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 9500,
+      "price": 133.9,
+      "valueUsd": 1272050,
+      "tradeDate": "2026-11-17",
+      "filedDate": "2026-11-19",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NVDA&type=4"
+    },
+    {
+      "id": "f4-crwv-1",
+      "ticker": "CRWV",
+      "companyName": "CoreWeave Inc.",
+      "insiderName": "Michael Intrator",
+      "role": "CEO & Co-Founder",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 45000,
+      "price": 42.15,
+      "valueUsd": 1896750,
+      "tradeDate": "2026-11-20",
+      "filedDate": "2026-11-21",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CRWV&type=4"
+    },
+    {
+      "id": "f4-crwv-2",
+      "ticker": "CRWV",
+      "companyName": "CoreWeave Inc.",
+      "insiderName": "Nitin Agrawal",
+      "role": "CFO",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 22000,
+      "price": 41.9,
+      "valueUsd": 921800,
+      "tradeDate": "2026-11-19",
+      "filedDate": "2026-11-21",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CRWV&type=4"
+    },
+    {
+      "id": "f4-coin-1",
+      "ticker": "COIN",
+      "companyName": "Coinbase Global",
+      "insiderName": "Alesia Haas",
+      "role": "CFO",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 6500,
+      "price": 268.4,
+      "valueUsd": 1744600,
+      "tradeDate": "2026-11-18",
+      "filedDate": "2026-11-20",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=COIN&type=4"
+    },
+    {
+      "id": "f4-coin-2",
+      "ticker": "COIN",
+      "companyName": "Coinbase Global",
+      "insiderName": "Fred Ehrsam",
+      "role": "Director & Co-Founder",
+      "isCsuite": false,
+      "action": "BUY",
+      "shares": 12000,
+      "price": 266.2,
+      "valueUsd": 3194400,
+      "tradeDate": "2026-11-17",
+      "filedDate": "2026-11-19",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=COIN&type=4"
+    },
+    {
+      "id": "f4-ant-1",
+      "ticker": "ANT",
+      "companyName": "Anthropic PBC",
+      "insiderName": "Institutional Lead Anchor",
+      "role": "10% Owner",
+      "isCsuite": false,
+      "action": "BUY",
+      "shares": 120000,
+      "price": 83,
+      "valueUsd": 9960000,
+      "tradeDate": "2026-11-19",
+      "filedDate": "2026-11-21",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4"
+    },
+    {
+      "id": "f4-pltr-1",
+      "ticker": "PLTR",
+      "companyName": "Palantir Technologies",
+      "insiderName": "Alexander C. Karp",
+      "role": "Chief Executive Officer",
+      "isCsuite": true,
+      "action": "SELL",
+      "shares": 210000,
+      "price": 64.2,
+      "valueUsd": 13482000,
+      "tradeDate": "2026-11-18",
+      "filedDate": "2026-11-20",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=PLTR&type=4"
+    },
+    {
+      "id": "f4-tsla-1",
+      "ticker": "TSLA",
+      "companyName": "Tesla Inc.",
+      "insiderName": "Robyn M. Denholm",
+      "role": "Chair of the Board",
+      "isCsuite": false,
+      "action": "SELL",
+      "shares": 28000,
+      "price": 342.5,
+      "valueUsd": 9590000,
+      "tradeDate": "2026-11-15",
+      "filedDate": "2026-11-19",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=TSLA&type=4"
+    },
+    {
+      "id": "f4-meta-1",
+      "ticker": "META",
+      "companyName": "Meta Platforms",
+      "insiderName": "Susan Li",
+      "role": "Chief Financial Officer",
+      "isCsuite": true,
+      "action": "SELL",
+      "shares": 8200,
+      "price": 588.1,
+      "valueUsd": 4822420,
+      "tradeDate": "2026-11-16",
+      "filedDate": "2026-11-18",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=META&type=4"
+    },
+    {
+      "id": "f4-amd-1",
+      "ticker": "AMD",
+      "companyName": "Advanced Micro Devices",
+      "insiderName": "Jean Hu",
+      "role": "EVP & CFO",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 11000,
+      "price": 141.6,
+      "valueUsd": 1557600,
+      "tradeDate": "2026-11-19",
+      "filedDate": "2026-11-21",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=AMD&type=4"
+    },
+    {
+      "id": "f4-msft-1",
+      "ticker": "MSFT",
+      "companyName": "Microsoft Corp.",
+      "insiderName": "Amy E. Hood",
+      "role": "EVP & CFO",
+      "isCsuite": true,
+      "action": "SELL",
+      "shares": 15000,
+      "price": 421.3,
+      "valueUsd": 6319500,
+      "tradeDate": "2026-11-14",
+      "filedDate": "2026-11-18",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MSFT&type=4"
+    },
+    {
+      "id": "f4-hood-1",
+      "ticker": "HOOD",
+      "companyName": "Robinhood Markets",
+      "insiderName": "Jason Warnick",
+      "role": "CFO",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 30000,
+      "price": 34.8,
+      "valueUsd": 1044000,
+      "tradeDate": "2026-11-17",
+      "filedDate": "2026-11-19",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=HOOD&type=4"
+    },
+    {
+      "id": "f4-jpm-1",
+      "ticker": "JPM",
+      "companyName": "JPMorgan Chase",
+      "insiderName": "Jeremy Barnum",
+      "role": "CFO",
+      "isCsuite": true,
+      "action": "SELL",
+      "shares": 12500,
+      "price": 244.1,
+      "valueUsd": 3051250,
+      "tradeDate": "2026-11-13",
+      "filedDate": "2026-11-17",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=JPM&type=4"
+    },
+    {
+      "id": "f4-mu-1",
+      "ticker": "MU",
+      "companyName": "Micron Technology",
+      "insiderName": "Sanjay Mehrotra",
+      "role": "CEO & President",
+      "isCsuite": true,
+      "action": "BUY",
+      "shares": 18000,
+      "price": 104.2,
+      "valueUsd": 1875600,
+      "tradeDate": "2026-11-18",
+      "filedDate": "2026-11-20",
+      "filingUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=MU&type=4"
+    }
+  ],
+  "squeeze": [
+    {
+      "ticker": "SRXH",
+      "companyName": "SRXH",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 512875,
+      "shortExemptVolume": 198500,
+      "totalVolume": 616804,
+      "shortVolPct": 83.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "OPTU",
+      "companyName": "OPTU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1513332,
+      "shortExemptVolume": 122987,
+      "totalVolume": 1843223,
+      "shortVolPct": 82.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "ONDL",
+      "companyName": "ONDL",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1912795,
+      "shortExemptVolume": 93462,
+      "totalVolume": 2339080,
+      "shortVolPct": 81.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PS",
+      "companyName": "PS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 421367,
+      "shortExemptVolume": 27859,
+      "totalVolume": 524911,
+      "shortVolPct": 80.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "MARO",
+      "companyName": "MARO",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 783596,
+      "shortExemptVolume": 115630,
+      "totalVolume": 984824,
+      "shortVolPct": 79.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "LFMD",
+      "companyName": "LFMD",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 595625,
+      "shortExemptVolume": 155251,
+      "totalVolume": 775547,
+      "shortVolPct": 76.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SPAX",
+      "companyName": "SPAX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 573338,
+      "shortExemptVolume": 35287,
+      "totalVolume": 758068,
+      "shortVolPct": 75.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GORO",
+      "companyName": "GORO",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 388619,
+      "shortExemptVolume": 99937,
+      "totalVolume": 529938,
+      "shortVolPct": 73.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "LWLG",
+      "companyName": "LWLG",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1888333,
+      "shortExemptVolume": 187069,
+      "totalVolume": 2581289,
+      "shortVolPct": 73.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "JMIA",
+      "companyName": "JMIA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 3395574,
+      "shortExemptVolume": 350767,
+      "totalVolume": 4685405,
+      "shortVolPct": 72.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "COHH",
+      "companyName": "COHH",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2563216,
+      "shortExemptVolume": 145558,
+      "totalVolume": 3592349,
+      "shortVolPct": 71.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SOAR",
+      "companyName": "SOAR",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 850901,
+      "shortExemptVolume": 147939,
+      "totalVolume": 1195017,
+      "shortVolPct": 71.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "TECL",
+      "companyName": "TECL",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1507759,
+      "shortExemptVolume": 317088,
+      "totalVolume": 2122185,
+      "shortVolPct": 71,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 82,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AIRS",
+      "companyName": "AIRS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 650889,
+      "shortExemptVolume": 127832,
+      "totalVolume": 932549,
+      "shortVolPct": 69.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 81,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "WRD",
+      "companyName": "WRD",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2429264,
+      "shortExemptVolume": 402663,
+      "totalVolume": 3492568,
+      "shortVolPct": 69.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 81,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PZG",
+      "companyName": "PZG",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 401582,
+      "shortExemptVolume": 23027,
+      "totalVolume": 577923,
+      "shortVolPct": 69.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 80,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SNDC",
+      "companyName": "SNDC",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 464685,
+      "shortExemptVolume": 47026,
+      "totalVolume": 674144,
+      "shortVolPct": 68.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 80,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SPCE",
+      "companyName": "SPCE",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 8058913,
+      "shortExemptVolume": 722816,
+      "totalVolume": 11689985,
+      "shortVolPct": 68.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 80,
+      "regime": "EXTREME",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "STXS",
+      "companyName": "STXS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 610421,
+      "shortExemptVolume": 27600,
+      "totalVolume": 767556,
+      "shortVolPct": 79.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 79,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "STAK",
+      "companyName": "STAK",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1889100,
+      "shortExemptVolume": 364348,
+      "totalVolume": 2754492,
+      "shortVolPct": 68.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 79,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BMNZ",
+      "companyName": "BMNZ",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 365189,
+      "shortExemptVolume": 20724,
+      "totalVolume": 534521,
+      "shortVolPct": 68.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 78,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "EVH",
+      "companyName": "EVH",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1404890,
+      "shortExemptVolume": 89952,
+      "totalVolume": 2071001,
+      "shortVolPct": 67.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 78,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "NMRA",
+      "companyName": "NMRA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 377186,
+      "shortExemptVolume": 16284,
+      "totalVolume": 513669,
+      "shortVolPct": 73.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 77,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CYH",
+      "companyName": "CYH",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1010752,
+      "shortExemptVolume": 135042,
+      "totalVolume": 1520573,
+      "shortVolPct": 66.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 76,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "COWG",
+      "companyName": "COWG",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 334143,
+      "shortExemptVolume": 15002,
+      "totalVolume": 478428,
+      "shortVolPct": 69.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 75,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SES",
+      "companyName": "SES",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 5740864,
+      "shortExemptVolume": 716885,
+      "totalVolume": 8701581,
+      "shortVolPct": 66,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 75,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "QPUX",
+      "companyName": "QPUX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 294268,
+      "shortExemptVolume": 71293,
+      "totalVolume": 447083,
+      "shortVolPct": 65.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 75,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "EYPT",
+      "companyName": "EYPT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1519131,
+      "shortExemptVolume": 98078,
+      "totalVolume": 2318482,
+      "shortVolPct": 65.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 75,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BKHA",
+      "companyName": "BKHA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 372436,
+      "shortExemptVolume": 58254,
+      "totalVolume": 569437,
+      "shortVolPct": 65.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 74,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "LAES",
+      "companyName": "LAES",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 5501961,
+      "shortExemptVolume": 685155,
+      "totalVolume": 8485481,
+      "shortVolPct": 64.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 74,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "ATOM",
+      "companyName": "ATOM",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 337993,
+      "shortExemptVolume": 17830,
+      "totalVolume": 507202,
+      "shortVolPct": 66.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 73,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AMCI",
+      "companyName": "AMCI",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 448249,
+      "shortExemptVolume": 148572,
+      "totalVolume": 695436,
+      "shortVolPct": 64.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 73,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CNDT",
+      "companyName": "CNDT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1078809,
+      "shortExemptVolume": 96235,
+      "totalVolume": 1681124,
+      "shortVolPct": 64.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 73,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "TQQQ",
+      "companyName": "TQQQ",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 69424966,
+      "shortExemptVolume": 8351231,
+      "totalVolume": 108575534,
+      "shortVolPct": 63.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 72,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CLSX",
+      "companyName": "CLSX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 323264,
+      "shortExemptVolume": 143829,
+      "totalVolume": 507223,
+      "shortVolPct": 63.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 72,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SOXL",
+      "companyName": "SOXL",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 127032454,
+      "shortExemptVolume": 20879376,
+      "totalVolume": 199741021,
+      "shortVolPct": 63.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 72,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GRRR",
+      "companyName": "GRRR",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 527139,
+      "shortExemptVolume": 94482,
+      "totalVolume": 829548,
+      "shortVolPct": 63.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 72,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "INDI",
+      "companyName": "INDI",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1762300,
+      "shortExemptVolume": 167102,
+      "totalVolume": 2780569,
+      "shortVolPct": 63.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 72,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PTIR",
+      "companyName": "PTIR",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 629247,
+      "shortExemptVolume": 65890,
+      "totalVolume": 995501,
+      "shortVolPct": 63.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 71,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CDXS",
+      "companyName": "CDXS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 880164,
+      "shortExemptVolume": 172892,
+      "totalVolume": 1395723,
+      "shortVolPct": 63.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 71,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "UMAC",
+      "companyName": "UMAC",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1544697,
+      "shortExemptVolume": 222477,
+      "totalVolume": 2460885,
+      "shortVolPct": 62.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 71,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "MARA",
+      "companyName": "MARA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 15100953,
+      "shortExemptVolume": 1630314,
+      "totalVolume": 24127176,
+      "shortVolPct": 62.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 70,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GLXU",
+      "companyName": "GLXU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 333606,
+      "shortExemptVolume": 131184,
+      "totalVolume": 535530,
+      "shortVolPct": 62.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 70,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "INV",
+      "companyName": "INV",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 9899465,
+      "shortExemptVolume": 1632727,
+      "totalVolume": 15885254,
+      "shortVolPct": 62.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 70,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BLNK",
+      "companyName": "BLNK",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1396873,
+      "shortExemptVolume": 94946,
+      "totalVolume": 2247978,
+      "shortVolPct": 62.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 70,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "LQDT",
+      "companyName": "LQDT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 283974,
+      "shortExemptVolume": 8045,
+      "totalVolume": 403043,
+      "shortVolPct": 70.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "SPRY",
+      "companyName": "SPRY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 887999,
+      "shortExemptVolume": 35427,
+      "totalVolume": 1319491,
+      "shortVolPct": 67.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "RUM",
+      "companyName": "RUM",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1484647,
+      "shortExemptVolume": 74326,
+      "totalVolume": 2278686,
+      "shortVolPct": 65.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "RGTX",
+      "companyName": "RGTX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 609013,
+      "shortExemptVolume": 59006,
+      "totalVolume": 986878,
+      "shortVolPct": 61.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AREC",
+      "companyName": "AREC",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 710420,
+      "shortExemptVolume": 127796,
+      "totalVolume": 1154010,
+      "shortVolPct": 61.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GLAS",
+      "companyName": "GLAS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 617057,
+      "shortExemptVolume": 103656,
+      "totalVolume": 1004167,
+      "shortVolPct": 61.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 69,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "EOSU",
+      "companyName": "EOSU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 374175,
+      "shortExemptVolume": 37698,
+      "totalVolume": 609991,
+      "shortVolPct": 61.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "FETH",
+      "companyName": "FETH",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 489280,
+      "shortExemptVolume": 50994,
+      "totalVolume": 798796,
+      "shortVolPct": 61.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "MSS",
+      "companyName": "MSS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 30519742,
+      "shortExemptVolume": 6433443,
+      "totalVolume": 49772332,
+      "shortVolPct": 61.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SA",
+      "companyName": "SA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1081502,
+      "shortExemptVolume": 77495,
+      "totalVolume": 1765395,
+      "shortVolPct": 61.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SVRA",
+      "companyName": "SVRA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 3421268,
+      "shortExemptVolume": 273748,
+      "totalVolume": 5583391,
+      "shortVolPct": 61.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GDXU",
+      "companyName": "GDXU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1163931,
+      "shortExemptVolume": 283003,
+      "totalVolume": 1900995,
+      "shortVolPct": 61.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "RDZN",
+      "companyName": "RDZN",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 266157,
+      "shortExemptVolume": 29090,
+      "totalVolume": 435622,
+      "shortVolPct": 61.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CISO",
+      "companyName": "CISO",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 545504,
+      "shortExemptVolume": 44042,
+      "totalVolume": 897441,
+      "shortVolPct": 60.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "DUOT",
+      "companyName": "DUOT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 645533,
+      "shortExemptVolume": 74734,
+      "totalVolume": 1064115,
+      "shortVolPct": 60.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 68,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "NTES",
+      "companyName": "NTES",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 460479,
+      "shortExemptVolume": 11556,
+      "totalVolume": 654812,
+      "shortVolPct": 70.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 67,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "AAOG",
+      "companyName": "AAOG",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1810250,
+      "shortExemptVolume": 205731,
+      "totalVolume": 3005727,
+      "shortVolPct": 60.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 67,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "ELDN",
+      "companyName": "ELDN",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 367890,
+      "shortExemptVolume": 8400,
+      "totalVolume": 523180,
+      "shortVolPct": 70.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "HDB",
+      "companyName": "HDB",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 5122788,
+      "shortExemptVolume": 364285,
+      "totalVolume": 8553821,
+      "shortVolPct": 59.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "NIVF",
+      "companyName": "NIVF",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 10872944,
+      "shortExemptVolume": 3086477,
+      "totalVolume": 18178317,
+      "shortVolPct": 59.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "ANVS",
+      "companyName": "ANVS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 462743,
+      "shortExemptVolume": 135018,
+      "totalVolume": 775207,
+      "shortVolPct": 59.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PUSA",
+      "companyName": "PUSA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 319583,
+      "shortExemptVolume": 38498,
+      "totalVolume": 536155,
+      "shortVolPct": 59.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SVIX",
+      "companyName": "SVIX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 7518891,
+      "shortExemptVolume": 1015833,
+      "totalVolume": 12610659,
+      "shortVolPct": 59.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "XLG",
+      "companyName": "XLG",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 880144,
+      "shortExemptVolume": 93337,
+      "totalVolume": 1477145,
+      "shortVolPct": 59.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "GRML",
+      "companyName": "GRML",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 301325,
+      "shortExemptVolume": 29008,
+      "totalVolume": 506552,
+      "shortVolPct": 59.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "TSLT",
+      "companyName": "TSLT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 333399,
+      "shortExemptVolume": 26166,
+      "totalVolume": 560212,
+      "shortVolPct": 59.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "IHRT",
+      "companyName": "IHRT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 682640,
+      "shortExemptVolume": 170022,
+      "totalVolume": 1149613,
+      "shortVolPct": 59.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "NXAT",
+      "companyName": "NXAT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 67357764,
+      "shortExemptVolume": 14650978,
+      "totalVolume": 113413666,
+      "shortVolPct": 59.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 66,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BKDV",
+      "companyName": "BKDV",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 403994,
+      "shortExemptVolume": 6244,
+      "totalVolume": 464515,
+      "shortVolPct": 87,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "MVST",
+      "companyName": "MVST",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1307645,
+      "shortExemptVolume": 49420,
+      "totalVolume": 1989464,
+      "shortVolPct": 65.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "FINV",
+      "companyName": "FINV",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 304989,
+      "shortExemptVolume": 13100,
+      "totalVolume": 472475,
+      "shortVolPct": 64.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SERV",
+      "companyName": "SERV",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1880518,
+      "shortExemptVolume": 157615,
+      "totalVolume": 3174288,
+      "shortVolPct": 59.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BEX",
+      "companyName": "BEX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2525172,
+      "shortExemptVolume": 528807,
+      "totalVolume": 4281487,
+      "shortVolPct": 59,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "WGMI",
+      "companyName": "WGMI",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 372336,
+      "shortExemptVolume": 67524,
+      "totalVolume": 635740,
+      "shortVolPct": 58.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "XTIA",
+      "companyName": "XTIA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 267089,
+      "shortExemptVolume": 54811,
+      "totalVolume": 455990,
+      "shortVolPct": 58.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 65,
+      "regime": "HIGH",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AOR",
+      "companyName": "AOR",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 815220,
+      "shortExemptVolume": 12283,
+      "totalVolume": 1043220,
+      "shortVolPct": 78.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "FLY",
+      "companyName": "FLY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1373635,
+      "shortExemptVolume": 38471,
+      "totalVolume": 2031439,
+      "shortVolPct": 67.6,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "ZLAB",
+      "companyName": "ZLAB",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 414868,
+      "shortExemptVolume": 13541,
+      "totalVolume": 621617,
+      "shortVolPct": 66.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >60%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "ONCY",
+      "companyName": "ONCY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 496979,
+      "shortExemptVolume": 76888,
+      "totalVolume": 850054,
+      "shortVolPct": 58.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BSBR",
+      "companyName": "BSBR",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 554340,
+      "shortExemptVolume": 45181,
+      "totalVolume": 948836,
+      "shortVolPct": 58.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "BURU",
+      "companyName": "BURU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 725220,
+      "shortExemptVolume": 126294,
+      "totalVolume": 1241738,
+      "shortVolPct": 58.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PCT",
+      "companyName": "PCT",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2745890,
+      "shortExemptVolume": 192191,
+      "totalVolume": 4702930,
+      "shortVolPct": 58.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SRTM",
+      "companyName": "SRTM",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 9242904,
+      "shortExemptVolume": 2198585,
+      "totalVolume": 15835924,
+      "shortVolPct": 58.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AKAN",
+      "companyName": "AKAN",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 13380217,
+      "shortExemptVolume": 3014959,
+      "totalVolume": 22968417,
+      "shortVolPct": 58.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "NNOX",
+      "companyName": "NNOX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 292884,
+      "shortExemptVolume": 42710,
+      "totalVolume": 503442,
+      "shortVolPct": 58.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 64,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "CRWV",
+      "companyName": "CoreWeave Inc.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 18796674,
+      "shortExemptVolume": 1811838,
+      "totalVolume": 32839763,
+      "shortVolPct": 57.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 63,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "RDDT",
+      "companyName": "Reddit Inc.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1726539,
+      "shortExemptVolume": 193628,
+      "totalVolume": 3080621,
+      "shortVolPct": 56,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 61,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AMD",
+      "companyName": "Advanced Micro Devices",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 15717711,
+      "shortExemptVolume": 1575258,
+      "totalVolume": 30073204,
+      "shortVolPct": 52.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 55,
+      "regime": "ELEVATED",
+      "signals": [
+        "SHORT VOL >50%",
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "SPY",
+      "companyName": "SPY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 36261610,
+      "shortExemptVolume": 142388,
+      "totalVolume": 56442699,
+      "shortVolPct": 64.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 48,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "QQQ",
+      "companyName": "QQQ",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 29443859,
+      "shortExemptVolume": 119941,
+      "totalVolume": 47106444,
+      "shortVolPct": 62.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 46,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >60%"
+      ]
+    },
+    {
+      "ticker": "CRCL",
+      "companyName": "CRCL",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2934267,
+      "shortExemptVolume": 14814,
+      "totalVolume": 4961700,
+      "shortVolPct": 59.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 41,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "COIN",
+      "companyName": "Coinbase Global",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2346658,
+      "shortExemptVolume": 60835,
+      "totalVolume": 4673067,
+      "shortVolPct": 50.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 35,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "SPCX",
+      "companyName": "SpaceX",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 29146275,
+      "shortExemptVolume": 176661,
+      "totalVolume": 54286168,
+      "shortVolPct": 53.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 34,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "GME",
+      "companyName": "GameStop Corp.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 2543108,
+      "shortExemptVolume": 2404,
+      "totalVolume": 4754115,
+      "shortVolPct": 53.5,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 32,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "TSLA",
+      "companyName": "Tesla Inc.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 9667042,
+      "shortExemptVolume": 45788,
+      "totalVolume": 18612752,
+      "shortVolPct": 51.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 30,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "companyName": "Apple Inc.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 10861139,
+      "shortExemptVolume": 35576,
+      "totalVolume": 21590114,
+      "shortVolPct": 50.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 28,
+      "regime": "NORMAL",
+      "signals": [
+        "SHORT VOL >50%"
+      ]
+    },
+    {
+      "ticker": "ARM",
+      "companyName": "Arm Holdings",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1459128,
+      "shortExemptVolume": 73608,
+      "totalVolume": 3583630,
+      "shortVolPct": 40.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 26,
+      "regime": "NORMAL",
+      "signals": [
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "PLTR",
+      "companyName": "Palantir Technologies",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 6454356,
+      "shortExemptVolume": 41753,
+      "totalVolume": 13722638,
+      "shortVolPct": 47,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 24,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "ANT",
+      "companyName": "Anthropic PBC",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 57486969,
+      "shortExemptVolume": 1859026,
+      "totalVolume": 137608524,
+      "shortVolPct": 41.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 23,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "SMCI",
+      "companyName": "Super Micro Computer",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 9107764,
+      "shortExemptVolume": 99136,
+      "totalVolume": 20352849,
+      "shortVolPct": 44.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 22,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "CBRS",
+      "companyName": "CBRS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 3625316,
+      "shortExemptVolume": 16188,
+      "totalVolume": 8587902,
+      "shortVolPct": 42.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 16,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "NVDA",
+      "companyName": "NVIDIA Corp.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 70881683,
+      "shortExemptVolume": 6697598,
+      "totalVolume": 275723618,
+      "shortVolPct": 25.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 16,
+      "regime": "NORMAL",
+      "signals": [
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "MU",
+      "companyName": "MU",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 8054316,
+      "shortExemptVolume": 627551,
+      "totalVolume": 27987144,
+      "shortVolPct": 28.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 15,
+      "regime": "NORMAL",
+      "signals": [
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "AMZN",
+      "companyName": "AMZN",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 10732757,
+      "shortExemptVolume": 55590,
+      "totalVolume": 26559193,
+      "shortVolPct": 40.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 14,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "SKHY",
+      "companyName": "SKHY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 4214492,
+      "shortExemptVolume": 315027,
+      "totalVolume": 14327106,
+      "shortVolPct": 29.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 14,
+      "regime": "NORMAL",
+      "signals": [
+        "REG SHO EXEMPT SPIKE"
+      ]
+    },
+    {
+      "ticker": "INTC",
+      "companyName": "INTC",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 27773013,
+      "shortExemptVolume": 158314,
+      "totalVolume": 73128223,
+      "shortVolPct": 38,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "HOOD",
+      "companyName": "Robinhood Markets",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 4761935,
+      "shortExemptVolume": 43389,
+      "totalVolume": 13166997,
+      "shortVolPct": 36.2,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "LLY",
+      "companyName": "LLY",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 351879,
+      "shortExemptVolume": 1427,
+      "totalVolume": 983039,
+      "shortVolPct": 35.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "companyName": "Microsoft Corp.",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 4220357,
+      "shortExemptVolume": 22996,
+      "totalVolume": 12156899,
+      "shortVolPct": 34.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "GS",
+      "companyName": "GS",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 531477,
+      "shortExemptVolume": 4259,
+      "totalVolume": 1592456,
+      "shortVolPct": 33.4,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "AVGO",
+      "companyName": "AVGO",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 6852130,
+      "shortExemptVolume": 77258,
+      "totalVolume": 20588502,
+      "shortVolPct": 33.3,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "META",
+      "companyName": "Meta Platforms",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 3031913,
+      "shortExemptVolume": 42754,
+      "totalVolume": 9885749,
+      "shortVolPct": 30.7,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "GOOGL",
+      "companyName": "GOOGL",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 5791742,
+      "shortExemptVolume": 33676,
+      "totalVolume": 20598634,
+      "shortVolPct": 28.1,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "BA",
+      "companyName": "BA",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1428097,
+      "shortExemptVolume": 16049,
+      "totalVolume": 5322380,
+      "shortVolPct": 26.8,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    },
+    {
+      "ticker": "JPM",
+      "companyName": "JPM",
+      "tradeDate": "2026-11-20",
+      "shortVolume": 1027888,
+      "shortExemptVolume": 3129,
+      "totalVolume": 4303053,
+      "shortVolPct": 23.9,
+      "ftdShares": 0,
+      "ftdUsd": 0,
+      "ftdDate": "2026-11-20",
+      "squeezeScore": 10,
+      "regime": "NORMAL",
+      "signals": [
+        "ACTIVE SHORT FLOW"
+      ]
+    }
+  ]
+}

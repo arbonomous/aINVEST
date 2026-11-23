@@ -7,6 +7,7 @@ import {
   Check,
   Flame,
   Globe,
+  Landmark,
   Newspaper,
   Search,
   Share2,
@@ -18,7 +19,12 @@ import type { DirectoryEntry } from '../lib/marketCatalog';
 import { THEMES, type ThemeId } from '../lib/themes';
 import type { ExplorerTab } from './MarketExplorerModal';
 
-export type AppView = 'home' | 'whale-flow' | 'daily-bread' | 'terminal';
+export type AppView =
+  | 'home'
+  | 'whale-flow'
+  | 'insiders'
+  | 'daily-bread'
+  | 'terminal';
 
 interface TerminalHeaderProps {
   activeView: AppView;
@@ -280,7 +286,7 @@ export function TerminalHeader({
             )}
           </button>
           <span className="brand-tagline mono">
-            LIVE MARKETS • WHALE FLOW • AI DAY-TRADE TERMINAL
+            LIVE MARKETS • WHALE FLOW • INSIDERS • AI TERMINAL
           </span>
         </div>
       </div>
@@ -307,6 +313,16 @@ export function TerminalHeader({
           >
             <Waves size={12} />
             <span>WHALE FLOW</span>
+          </button>
+          <button
+            id="nav-view-insiders"
+            type="button"
+            className={`view-nav-btn view-nav-btn--insiders mono${activeView === 'insiders' ? ' active' : ''}`}
+            aria-current={activeView === 'insiders' ? 'page' : undefined}
+            onClick={() => onSelectView('insiders')}
+          >
+            <Landmark size={12} />
+            <span>INSIDERS</span>
           </button>
           <button
             id="nav-view-daily-bread"
@@ -337,9 +353,11 @@ export function TerminalHeader({
                 ? 'MARKETS'
                 : activeView === 'whale-flow'
                   ? 'WHALE FLOW'
-                  : activeView === 'daily-bread'
-                    ? 'DAILY BREAD'
-                    : `ROOM: ${activeTicker}`}
+                  : activeView === 'insiders'
+                    ? 'INSIDERS'
+                    : activeView === 'daily-bread'
+                      ? 'DAILY BREAD'
+                      : `ROOM: ${activeTicker}`}
             </span>
             <span className="session-divider" aria-hidden="true" />
             <span className="session-clock">{etClock} ET</span>
