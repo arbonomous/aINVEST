@@ -35,6 +35,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
       - name: Sync official SEC Form 4, FINRA Short Vol, SEC FTD & Congress data
         run: node scripts/sync-insiders-data.mjs
 

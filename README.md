@@ -4,7 +4,8 @@ Real-time multi-ticker financial terminal giving users **identical live War Room
 
 ## Key Features
 
-- **Markets & Breaking Stock News Front Page**: Yahoo-Finance-style editorial landing page with live breaking stock news (aggregating CNBC Markets/Tech & Yahoo Finance RSS feeds + TradingView Live Wire), auto-extracted clickable stock quote pills on every story, 5-benchmark Market Pulse sparklines, Trending Tickers, live Market Movers (Active / Gainers / Losers), IPO Spotlight, and persistent Watchlist.
+- **5-Pillar Cross-Signal Confluence Engine** (aINVEST's core idea): scores every ticker across `TECH` + `WHALE` (options flow / dealer GEX) + `INSIDER` (Congress, SEC Form 4 clusters, FINRA short squeeze) + `24/7` (Hyperliquid perps) + `CATALYST` (earnings & macro countdowns, implied moves) and shows the evidence behind each pillar. Lives at the top of every War Room, with a **Confluence Screener** (smart-money presets) in the Explorer modal and 1-click PNG export.
+- **News Front Page**: Yahoo-Finance-style editorial landing page with live breaking stock news (CNBC Markets/Tech & Yahoo Finance RSS + TradingView Live Wire), auto-extracted clickable stock quote pills, 5-benchmark Market Pulse sparklines, Trending Tickers, live Market Movers (Active / Gainers / Losers), IPO Spotlight, and persistent Watchlist.
 - **Universal Market & IPO Coverage**: Search and open **any** US stock, ETF, recent 2025–2026 IPO (`ANT`, `SPCX`, `SKHY`, `CBRS`, `CRWV`, `BSP`, `CRCL`, `CHYM`, `VVVV`, `WWB`, `RZRA`), upcoming IPO (`NSCL`), or 24/7 Hyperliquid HIP-3 market across all discovered builder DEXes — or type any custom symbol directly.
 - **All Stocks & IPOs Explorer + Pinned Watchlist**: Browse & filter thousands of listings by IPO status, Exchange (`NASDAQ` / `NYSE` / `AMEX`), Sector, or 24/7 Live Perps, and pin (`★`) any stock or IPO to your persistent War Room switcher bar.
 - **Daily Bread — AI Day-Trade Calls**: Dedicated AI day-trade call desk (`DAILY BREAD` tab, compact preview on Markets front page, and single-ticker card in every War Room) combining live `5m / 15m / 1h` candles, Session VWAP, EMA 9/21/50, RSI(14), MACD, Bollinger Bands, ATR risk sizing, volume surges, and breaking news catalysts into structured `LONG` / `SHORT` / `WAIT` setups with Entry Zone, TP1, TP2, Stop Loss, R:R ratio, and instant any-ticker AI scan.
@@ -26,3 +27,21 @@ npm run dev
 ```bash
 npm run build
 ```
+
+## Testing
+
+```bash
+npm run lint   # oxlint
+npm test       # vitest: pricing, alerts, catalysts, CBOE parsing, confluence engine
+```
+
+Lint and unit tests run in CI before every GitHub Pages deploy.
+
+## Data Sources & Known Limits
+
+aINVEST is a zero-backend static app (GitHub Pages + GitHub Actions snapshots + live browser feeds).
+Several free public feeds (Yahoo, CBOE delayed options, RSS) are fetched from the browser through
+free CORS relays, so individual pillars can be temporarily unavailable or delayed. GitHub Actions
+runners are currently blocked by CBOE (HTTP 403), so options/GEX data is fetched live in the browser.
+Signals are rules-based (technical indicators, flow thresholds, news keywords) and are for
+informational purposes only — not investment advice.
