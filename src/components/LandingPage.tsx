@@ -16,6 +16,7 @@ import {
 import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
 import type { DailyBreadCall } from '../lib/dailyBreadEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
+import type { InsidersBundle } from '../lib/insidersEngine';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
   EDITORIAL_IMAGE_POOL,
@@ -29,6 +30,7 @@ import {
 import type { TrackedTrade } from '../lib/paperTrades';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
+import { ConfluenceRadarStrip } from './ConfluenceRadarStrip';
 import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
 import { OvernightRadarPanel } from './OvernightRadarPanel';
@@ -49,6 +51,7 @@ interface LandingPageProps {
   quoteMap: Record<string, MarketQuote>;
   directory: DirectoryEntry[];
   directoryMap: Record<string, DirectoryEntry>;
+  insidersBundle: InsidersBundle | null;
   pinnedTickers: string[];
   themeId: ThemeId;
   articles: NewsArticle[];
@@ -168,6 +171,7 @@ export function LandingPage({
   quoteMap,
   directory,
   directoryMap,
+  insidersBundle,
   pinnedTickers,
   themeId,
   articles,
@@ -768,6 +772,16 @@ export function LandingPage({
           );
         })}
       </section>
+
+      {/* 2B. 5-Pillar Cross-Signal Confluence Radar + Macro Countdown */}
+      <ConfluenceRadarStrip
+        ctxMap={ctxMap}
+        quoteMap={quoteMap}
+        directoryMap={directoryMap}
+        insidersBundle={insidersBundle}
+        articles={articles}
+        onSelectTicker={onSelectTicker}
+      />
 
       {/* 3. Main 2-Column Editorial Newsroom + Sticky Live Market Rail */}
       <div className="landing-editorial-grid">

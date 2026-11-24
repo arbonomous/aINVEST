@@ -1,3 +1,4 @@
+import type { ConfluenceReport } from './confluenceEngine';
 import type { DailyBreadCall } from './dailyBreadEngine';
 import type {
   ClusterBuySignal,
@@ -943,3 +944,132 @@ export async function exportSqueezeSnapshotCard(
 
   return emitCanvasPng(canvas, `aINVEST_${row.ticker}_SQUEEZE_RADAR.png`);
 }
+
+/**
+ * 7. Export 5-Pillar Cross-Signal Confluence Snapshot Card (1200x630 PNG)
+ */
+export async function exportConfluenceSnapshotCard(
+  report: ConfluenceReport,
+): Promise<SnapshotResult> {
+  const created = createCardCanvas();
+  if (!created) return 'failed';
+  const { canvas, ctx } = created;
+
+  const toneColor =
+    report.bias === 'bull'
+      ? '#3AD69F'
+      : report.bias === 'bear'
+        ? '#F2727D'
+        : '#F5BE58';
+  const toneDim =
+    report.bias === 'bull'
+      ? 'rgba(58, 214, 159, 0.16)'
+      : report.bias === 'bear'
+        ? 'rgba(242, 114, 125, 0.16)'
+        : 'rgba(245, 190, 88, 0.16)';
+
+  // Top Header Row: Ticker + Verdict + Composite Score
+  ctx.font = '800 50px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillText(`$${report.ticker}`, 42, 156);
+
+  const pxLabel =
+    report.price !== null
+      ? `$${report.price.toFixed(2)}${
+          report.changePct !== null
+            ? ` (${report.changePct >= 0 ? '+' : ''}${report.changePct.toFixed(2)}%)`
+            : ''
+        }`
+      : report.name;
+
+  ctx.font = '600 20px "JetBrains Mono", monospace';
+  ctx.fillStyle = '#94A3B8';
+  ctx.fillText(`${report.name.slice(0, 36)}  •  ${pxLabel}`, 42, 192);
+
+  // Right Score & Verdict Pill
+  const badgeText = `${report.verdict}  •  ${report.alignedCount}/${Math.max(report.activePillars, 1)} ALIGNED`;
+  ctx.font = '700 13px "JetBrains Mono", monospace';
+  const badgeW = Math.min(460, ctx.measureText(badgeText).width + 28);
+  const badgeX = W - 44 - badgeW;
+  ctx.fillStyle = toneDim;
+  ctx.strokeStyle = toneColor;
+  ctx.lineWidth = 1.25;
+  ctx.fillRect(badgeX, 110, badgeW, 30);
+  ctx.strokeRect(badgeX, 110, badgeW, 30);
+  ctx.fillStyle = toneColor;
+  ctx.textAlign = 'right';
+  ctx.fillText(badgeText, W - 58, 130);
+
+  ctx.font = '800 44px "JetBrains Mono", monospace';
+  ctx.fillStyle = toneColor;
+  ctx.fillText(`${report.score}/100`, W - 44, 192);
+  ctx.textAlign = 'left';
+
+  // Catalyst / Earnings Banner if present
+  if (report.catalystStatus.warningLabel) {
+    const warnColor =
+      report.catalystStatus.warningTone === 'crimson' ? '#F2727D' : '#F5BE58';
+    ctx.fillStyle = 'rgba(245, 190, 88, 0.12)';
+    ctx.strokeStyle = warnColor;
+    ctx.lineWidth = 1;
+    ctx.fillRect(42, 212, W - 84, 34);
+    ctx.strokeRect(42, 212, W - 84, 34);
+    ctx.font = '700 13px "JetBrains Mono", monospace';
+    ctx.fillStyle = warnColor;
+    ctx.fillText(`CATALYST ALERT: ${report.catalystStatus.warningLabel}`, 58, 234);
+  }
+
+  // 5 Auditable Pillar Rows
+  const startY = report.catalystStatus.warningLabel ? 262 : 224;
+  const rowH = 56;
+  const gap = 8;
+
+  report.pillars.forEach((p, idx) => {
+    const y = startY + idx * (rowH + gap);
+    const pColor = !p.active
+      ? '#64748B'
+      : p.direction === 'bull'
+        ? '#3AD69F'
+        : p.direction === 'bear'
+          ? '#F2727D'
+          : '#F5BE58';
+
+    ctx.fillStyle = '#111622';
+    ctx.strokeStyle = '#1E2636';
+    ctx.lineWidth = 1;
+    ctx.fillRect(42, y, W - 84, rowH);
+    ctx.strokeRect(42, y, W - 84, rowH);
+
+    // Left accent strip
+    ctx.fillStyle = pColor;
+    ctx.fillRect(42, y, 4, rowH);
+
+    ctx.font = '700 13px "JetBrains Mono", monospace';
+    ctx.fillStyle = pColor;
+    ctx.fillText(p.shortLabel, 60, y + 24);
+
+    ctx.font = '700 15px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#F1F5F9';
+    ctx.fillText(p.headline, 165, y + 24);
+
+    ctx.font = '500 13px Inter, system-ui, sans-serif';
+    ctx.fillStyle = '#94A3B8';
+    const trimmedEv =
+      p.evidence.length > 88 ? `${p.evidence.slice(0, 87)}…` : p.evidence;
+    ctx.fillText(trimmedEv, 165, y + 45);
+
+    ctx.font = '700 16px "JetBrains Mono", monospace';
+    ctx.fillStyle = pColor;
+    ctx.textAlign = 'right';
+    ctx.fillText(p.active ? `${p.strength}` : '—', W - 60, y + 34);
+    ctx.textAlign = 'left';
+  });
+
+  drawFooter(
+    ctx,
+    'aINVEST 5-PILLAR CROSS-SIGNAL CONFLUENCE (TECH • WHALE • INSIDER • 24/7 • CATALYST) • NOT FINANCIAL ADVICE',
+  );
+
+  return emitCanvasPng(canvas, `aINVEST_${report.ticker}_CONFLUENCE.png`);
+}
+

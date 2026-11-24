@@ -22,6 +22,7 @@ import { TechnicalGaugePanel } from './components/TechnicalGaugePanel';
 import { TerminalFooter } from './components/TerminalFooter';
 import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
+import { WarRoomConfluenceCard } from './components/WarRoomConfluenceCard';
 import { resolveTickerMeta } from './data/tickers';
 
 const LandingPage = lazy(() =>
@@ -68,6 +69,10 @@ import {
   fetchAllHyperliquidHip3CtxMap,
   type HlAssetCtx,
 } from './lib/hyperliquidFeed';
+import {
+  fetchInsidersBundle,
+  type InsidersBundle,
+} from './lib/insidersEngine';
 import {
   getCachedDirectorySync,
   loadUsMarketDirectory,
@@ -209,6 +214,9 @@ export function App() {
     null,
   );
   const [insidersSearch, setInsidersSearch] = useState<string>('');
+  const [insidersBundle, setInsidersBundle] = useState<InsidersBundle | null>(
+    null,
+  );
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>(() =>
     loadPriceAlerts(),
   );
@@ -220,6 +228,20 @@ export function App() {
   const processAlertHitsRef = useRef<(priceMap: Record<string, number>) => void>(
     () => {},
   );
+
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    void fetchInsidersBundle(false, controller.signal).then((data) => {
+      if (active && !controller.signal.aborted) {
+        setInsidersBundle(data);
+      }
+    });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, []);
 
   const directoryMap = useMemo<Record<string, DirectoryEntry>>(() => {
     const map: Record<string, DirectoryEntry> = {};
@@ -895,6 +917,7 @@ export function App() {
             quoteMap={quoteMap}
             directory={directory}
             directoryMap={directoryMap}
+            insidersBundle={insidersBundle}
             pinnedTickers={pinnedTickers}
             themeId={themeId}
             articles={articles}
@@ -1024,6 +1047,19 @@ export function App() {
                 className="intelligence-column"
                 aria-label={`aINVEST AI Intelligence and Quantitative Tools for ${meta.ticker}`}
               >
+                {/* Panel 0 — Unified 5-Pillar Cross-Signal Confluence Score + Catalyst Radar */}
+                <WarRoomConfluenceCard
+                  meta={meta}
+                  liveQuote={activeQuote}
+                  hlCtx={activeHlCtx}
+                  directoryEntry={activeDirEntry}
+                  insidersBundle={insidersBundle}
+                  articles={articles}
+                  tradePlan={activeTradePlan}
+                  gexLevels={activeGexLevels}
+                  onNotify={showToast}
+                />
+
                 {/* Panel A — Daily Bread Live AI Day-Trade Call */}
                 <DailyBreadTickerCard
                   meta={meta}
