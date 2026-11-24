@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Activity,
-  ArrowDownRight,
   ArrowRight,
-  ArrowUpRight,
   ExternalLink,
   Flame,
   Globe,
@@ -58,61 +56,6 @@ interface LandingPageProps {
   onOpenDailyBread: () => void;
   onTogglePin: (ticker: string) => void;
 }
-
-interface PulseBenchmark {
-  ticker: string;
-  fallbackTicker?: string;
-  label: string;
-  name: string;
-  tag: string;
-  sparkUp: string;
-  sparkDown: string;
-}
-
-const PULSE_BENCHMARKS: PulseBenchmark[] = [
-  {
-    ticker: 'XYZ100',
-    fallbackTicker: 'QQQ',
-    label: 'NDX 100',
-    name: 'Nasdaq 100',
-    tag: 'INDEX',
-    sparkUp: '2,22 14,18 26,20 38,14 50,15 62,9 74,11 86,5',
-    sparkDown: '2,7 14,10 26,8 38,14 50,13 62,19 74,17 86,23',
-  },
-  {
-    ticker: 'SP500',
-    fallbackTicker: 'SPY',
-    label: 'S&P 500',
-    name: 'US Large Cap',
-    tag: 'INDEX',
-    sparkUp: '2,20 14,19 26,16 38,17 50,12 62,13 74,8 86,6',
-    sparkDown: '2,6 14,8 26,11 38,10 50,16 62,15 74,20 86,22',
-  },
-  {
-    ticker: 'ANT',
-    label: 'ANT',
-    name: 'Anthropic IPO',
-    tag: 'IPO',
-    sparkUp: '2,23 14,14 26,16 38,9 50,11 62,7 74,9 86,5',
-    sparkDown: '2,5 14,9 26,8 38,14 50,16 62,19 74,18 86,23',
-  },
-  {
-    ticker: 'NVDA',
-    label: 'NVDA',
-    name: 'NVIDIA Corp.',
-    tag: 'AI',
-    sparkUp: '2,21 14,17 26,19 38,13 50,11 62,14 74,8 86,5',
-    sparkDown: '2,6 14,11 26,9 38,15 50,17 62,14 74,21 86,23',
-  },
-  {
-    ticker: 'SPCX',
-    label: 'SPCX',
-    name: 'SpaceX IPO',
-    tag: 'IPO',
-    sparkUp: '2,22 14,20 26,15 38,16 50,12 62,10 74,7 86,6',
-    sparkDown: '2,7 14,9 26,13 38,12 50,17 62,18 74,21 86,22',
-  },
-];
 
 const TRENDING_SYMBOLS = [
   'ANT',
@@ -642,111 +585,6 @@ export function LandingPage({
         </div>
       </section>
 
-      {/* 2. Live Market Pulse Benchmark Strip */}
-      <section className="market-pulse-strip" aria-label="Live market benchmarks">
-        {PULSE_BENCHMARKS.map((bm, idx) => {
-          const primary = resolveLivePrice(bm.ticker, ctxMap, quoteMap, directoryMap);
-          const resolved =
-            primary.price !== null || !bm.fallbackTicker
-              ? { ticker: bm.ticker, ...primary }
-              : {
-                  ticker: bm.fallbackTicker,
-                  ...resolveLivePrice(
-                    bm.fallbackTicker,
-                    ctxMap,
-                    quoteMap,
-                    directoryMap,
-                  ),
-                };
-          const isUp = resolved.pct !== null ? resolved.pct >= 0 : true;
-          const strokeColor = isUp ? palette.bull : palette.bear;
-          const pts = isUp ? bm.sparkUp : bm.sparkDown;
-          const gradId = `pulse-grad-${idx}-${isUp ? 'up' : 'dn'}`;
-          const lastCoord = pts.split(' ').at(-1)?.split(',') ?? ['86', '12'];
-
-          return (
-            <SpotlightSurface
-              key={bm.ticker}
-              tone={isUp ? 'emerald' : 'crimson'}
-              className="pulse-card-wrap"
-            >
-              <button
-                type="button"
-                className="pulse-card"
-                onClick={() => onSelectTicker(resolved.ticker)}
-              >
-                <div className="pulse-card-top">
-                  <div className="pulse-card-id">
-                    <span className="pulse-card-label mono">{bm.label}</span>
-                    <span className="pulse-card-tag mono">{bm.tag}</span>
-                  </div>
-                  <svg
-                    viewBox="0 0 90 30"
-                    className="pulse-sparkline"
-                    aria-hidden="true"
-                  >
-                    <defs>
-                      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={strokeColor} stopOpacity="0.28" />
-                        <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
-                      </linearGradient>
-                    </defs>
-                    <polygon
-                      fill={`url(#${gradId})`}
-                      points={`2,28 ${pts} 86,28`}
-                    />
-                    <polyline
-                      fill="none"
-                      stroke={strokeColor}
-                      strokeWidth="1.9"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={pts}
-                    />
-                    <circle
-                      cx={lastCoord[0]}
-                      cy={lastCoord[1]}
-                      r="2.4"
-                      fill={strokeColor}
-                    />
-                  </svg>
-                </div>
-
-                <div className="pulse-card-name">{bm.name}</div>
-
-                <div className="pulse-card-bottom mono">
-                  <AnimatedNumber
-                    value={resolved.price}
-                    prefix="$"
-                    decimals={2}
-                    fallback="Live →"
-                    className="pulse-card-price"
-                  />
-                  {resolved.pct !== null && (
-                    <span
-                      className={`pulse-card-pct ${
-                        isUp
-                          ? 'pulse-card-pct--up text-emerald'
-                          : 'pulse-card-pct--down text-crimson'
-                      }`}
-                    >
-                      {isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                      <AnimatedNumber
-                        value={resolved.pct}
-                        prefix={isUp ? '+' : ''}
-                        suffix="%"
-                        decimals={2}
-                        flashOnTick={false}
-                      />
-                    </span>
-                  )}
-                </div>
-              </button>
-            </SpotlightSurface>
-          );
-        })}
-      </section>
-
       {/* 3. Main 2-Column Editorial Newsroom + Sticky Live Market Rail */}
       <div className="landing-editorial-grid">
         {/* LEFT COLUMN: Editorial Lead Story + Feature Duo + Live Breaking Stream */}
@@ -1027,7 +865,100 @@ export function LandingPage({
         </div>
 
         {/* RIGHT COLUMN: Sticky High-Signal Live Market Rail */}
-        <aside className="landing-market-rail" aria-label="Live market movers, trending tickers and IPO radar">
+        <aside className="landing-market-rail" aria-label="Watchlist, live market movers, trending tickers and IPO radar">
+          {/* Pinned Watchlist Card (Top of Rail) */}
+          <section className="rail-card" aria-label="Pinned Watchlist">
+            <div className="rail-card-header">
+              <div className="panel-title-group">
+                <Star size={13} className="text-amber" aria-hidden="true" />
+                <h2 className="panel-title">YOUR WATCHLIST</h2>
+              </div>
+              <button
+                type="button"
+                className="rail-header-link mono"
+                onClick={() => onOpenExplorer('watchlist')}
+              >
+                MANAGE →
+              </button>
+            </div>
+
+            {pinnedTickers.length === 0 ? (
+              <div className="rail-watchlist-empty">
+                <p>Pin any stock or IPO for 1-click access across News &amp; Terminal.</p>
+                <div className="rail-quick-pins">
+                  {['ANT', 'SPCX', 'NVDA', 'JPM', 'DIS'].map((sym) => (
+                    <button
+                      key={sym}
+                      type="button"
+                      className="rail-quick-pin-btn mono"
+                      onClick={() => onTogglePin(sym)}
+                    >
+                      + {sym}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rail-quote-list">
+                {pinnedTickers.slice(0, 8).map((sym) => {
+                  const { price, pct } = resolveLivePrice(
+                    sym,
+                    ctxMap,
+                    quoteMap,
+                    directoryMap,
+                  );
+                  const isUp = pct !== null && pct >= 0;
+                  return (
+                    <div
+                      key={sym}
+                      className="rail-quote-row"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSelectTicker(sym)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectTicker(sym);
+                        }
+                      }}
+                    >
+                      <div className="rail-quote-left">
+                        <span className="rail-quote-sym mono">{sym}</span>
+                        <span className="rail-quote-name">
+                          {CURATED_MAP[sym]?.name ?? directoryMap[sym]?.name ?? sym}
+                        </span>
+                      </div>
+                      <div className="rail-quote-right mono">
+                        <span className="rail-quote-price">
+                          {price !== null ? `$${price.toFixed(2)}` : '—'}
+                        </span>
+                        <span
+                          className={`rail-quote-pct ${
+                            pct === null ? '' : isUp ? 'text-emerald' : 'text-crimson'
+                          }`}
+                        >
+                          {pct !== null ? `${isUp ? '+' : ''}${pct.toFixed(2)}%` : '—'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={`pin-star-btn${pinnedSet.has(sym) ? ' pinned' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onTogglePin(sym);
+                        }}
+                        title={`Unpin ${sym}`}
+                        aria-label={`Unpin ${sym}`}
+                      >
+                        <Star size={12} fill="currentColor" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           {/* Trending Tickers */}
           <section className="rail-card" aria-label="Trending stock tickers">
             <div className="rail-card-header">
@@ -1242,98 +1173,6 @@ export function LandingPage({
             </div>
           </section>
 
-          {/* Pinned Watchlist Card */}
-          <section className="rail-card" aria-label="Pinned Watchlist">
-            <div className="rail-card-header">
-              <div className="panel-title-group">
-                <Star size={13} className="text-amber" aria-hidden="true" />
-                <h2 className="panel-title">YOUR WATCHLIST</h2>
-              </div>
-              <button
-                type="button"
-                className="rail-header-link mono"
-                onClick={() => onOpenExplorer('watchlist')}
-              >
-                MANAGE →
-              </button>
-            </div>
-
-            {pinnedTickers.length === 0 ? (
-              <div className="rail-watchlist-empty">
-                <p>Pin any stock or IPO for 1-click access across News &amp; Terminal.</p>
-                <div className="rail-quick-pins">
-                  {['ANT', 'SPCX', 'NVDA', 'JPM', 'DIS'].map((sym) => (
-                    <button
-                      key={sym}
-                      type="button"
-                      className="rail-quick-pin-btn mono"
-                      onClick={() => onTogglePin(sym)}
-                    >
-                      + {sym}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="rail-quote-list">
-                {pinnedTickers.slice(0, 8).map((sym) => {
-                  const { price, pct } = resolveLivePrice(
-                    sym,
-                    ctxMap,
-                    quoteMap,
-                    directoryMap,
-                  );
-                  const isUp = pct !== null && pct >= 0;
-                  return (
-                    <div
-                      key={sym}
-                      className="rail-quote-row"
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => onSelectTicker(sym)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          onSelectTicker(sym);
-                        }
-                      }}
-                    >
-                      <div className="rail-quote-left">
-                        <span className="rail-quote-sym mono">{sym}</span>
-                        <span className="rail-quote-name">
-                          {CURATED_MAP[sym]?.name ?? directoryMap[sym]?.name ?? sym}
-                        </span>
-                      </div>
-                      <div className="rail-quote-right mono">
-                        <span className="rail-quote-price">
-                          {price !== null ? `$${price.toFixed(2)}` : '—'}
-                        </span>
-                        <span
-                          className={`rail-quote-pct ${
-                            pct === null ? '' : isUp ? 'text-emerald' : 'text-crimson'
-                          }`}
-                        >
-                          {pct !== null ? `${isUp ? '+' : ''}${pct.toFixed(2)}%` : '—'}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className={`pin-star-btn${pinnedSet.has(sym) ? ' pinned' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(sym);
-                        }}
-                        title={`Unpin ${sym}`}
-                        aria-label={`Unpin ${sym}`}
-                      >
-                        <Star size={12} fill="currentColor" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
         </aside>
       </div>
     </main>
