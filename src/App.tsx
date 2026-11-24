@@ -60,10 +60,12 @@ const OptionsPayoffModal = lazy(() =>
     default: m.OptionsPayoffModal,
   })),
 );
-import type {
-  ChartGexLevels,
-  OptionContractFlow,
-  TickerOptionsSummary,
+import {
+  scanMarketOptionsFlow,
+  WHALE_FLOW_LEADERS,
+  type ChartGexLevels,
+  type OptionContractFlow,
+  type TickerOptionsSummary,
 } from './lib/whaleFlowEngine';
 import { fetchConfluenceOptionsMap } from './lib/confluenceOptionsFeed';
 import type { DailyBreadCall } from './lib/dailyBreadEngine';
@@ -243,8 +245,27 @@ export function App() {
       }
     });
     void fetchConfluenceOptionsMap(controller.signal).then((map) => {
-      if (active && !controller.signal.aborted && Object.keys(map).length > 0) {
-        setOptionsMap(map);
+      if (!active || controller.signal.aborted) return;
+      if (Object.keys(map).length > 0) {
+        setOptionsMap((prev) => ({ ...map, ...prev }));
+      }
+      if (Object.keys(map).length < 6) {
+        void scanMarketOptionsFlow(
+          WHALE_FLOW_LEADERS,
+          false,
+          controller.signal,
+        ).then(({ summaries }) => {
+          if (!active || controller.signal.aborted || summaries.length === 0) {
+            return;
+          }
+          setOptionsMap((prev) => {
+            const next = { ...prev };
+            for (const s of summaries) {
+              next[s.ticker.toUpperCase()] = s;
+            }
+            return next;
+          });
+        });
       }
     });
     return () => {
@@ -705,6 +726,16 @@ export function App() {
     setExplorerOpen(true);
   }, []);
 
+  const handleOptionsSummaryUpdate = useCallback(
+    (summary: TickerOptionsSummary) => {
+      setOptionsMap((prev) => ({
+        ...prev,
+        [summary.ticker.toUpperCase()]: summary,
+      }));
+    },
+    [],
+  );
+
   const handleLiveHlUpdate = useCallback((next: HlAssetCtx) => {
     setCtxMap((prev) => ({ ...prev, [next.ticker]: next }));
     if (next.markPx > 0) {
@@ -1091,6 +1122,7 @@ export function App() {
                   livePrice={activeQuote?.price ?? null}
                   onSelectPriceLevel={handleSelectPriceLevel}
                   onOptionsLevelsUpdate={setActiveGexLevels}
+                  onOptionsSummaryUpdate={handleOptionsSummaryUpdate}
                   onSimulateContract={setSimContract}
                   onArmAlert={handleArmAlert}
                 />

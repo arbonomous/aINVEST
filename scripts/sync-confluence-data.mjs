@@ -218,6 +218,8 @@ function analyzeChain(ticker, payload) {
   };
 }
 
+let loggedDiag = false;
+
 async function fetchTickerCboe(ticker) {
   const url = `https://cdn.cboe.com/api/global/delayed_quotes/options/${encodeURIComponent(ticker)}.json`;
   const controller = new AbortController();
@@ -226,14 +228,24 @@ async function fetchTickerCboe(ticker) {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; aINVEST-ConfluenceSync/1.0)',
+        'User-Agent': 'aINVEST-Terminal/1.0 (+https://arbonomous.github.io/aINVEST/)',
         Accept: 'application/json',
       },
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      if (!loggedDiag) {
+        loggedDiag = true;
+        console.log(`CBOE diagnostic (${ticker}): HTTP ${res.status}`);
+      }
+      return null;
+    }
     const json = await res.json();
     return analyzeChain(ticker, json);
-  } catch {
+  } catch (err) {
+    if (!loggedDiag) {
+      loggedDiag = true;
+      console.log(`CBOE diagnostic (${ticker}): ${err?.message ?? err}`);
+    }
     return null;
   } finally {
     clearTimeout(timer);

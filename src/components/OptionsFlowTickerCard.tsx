@@ -14,6 +14,7 @@ interface OptionsFlowTickerCardProps {
   livePrice: number | null;
   onSelectPriceLevel: (price: number) => void;
   onOptionsLevelsUpdate?: (levels: ChartGexLevels | null) => void;
+  onOptionsSummaryUpdate?: (summary: TickerOptionsSummary) => void;
   onSimulateContract?: (contract: OptionContractFlow) => void;
   onArmAlert?: (params: {
     ticker: string;
@@ -36,6 +37,7 @@ function OptionsFlowTickerCardComponent({
   livePrice,
   onSelectPriceLevel,
   onOptionsLevelsUpdate,
+  onOptionsSummaryUpdate,
   onSimulateContract,
   onArmAlert,
 }: OptionsFlowTickerCardProps) {
@@ -46,6 +48,7 @@ function OptionsFlowTickerCardComponent({
   } | null>(null);
   const livePriceRef = useRef<number | null>(livePrice);
   const onLevelsRef = useRef(onOptionsLevelsUpdate);
+  const onSummaryRef = useRef(onOptionsSummaryUpdate);
 
   useEffect(() => {
     livePriceRef.current = livePrice;
@@ -54,6 +57,10 @@ function OptionsFlowTickerCardComponent({
   useEffect(() => {
     onLevelsRef.current = onOptionsLevelsUpdate;
   }, [onOptionsLevelsUpdate]);
+
+  useEffect(() => {
+    onSummaryRef.current = onOptionsSummaryUpdate;
+  }, [onOptionsSummaryUpdate]);
 
   useEffect(() => {
     if (meta.ipoStatus === 'upcoming') {
@@ -74,6 +81,9 @@ function OptionsFlowTickerCardComponent({
       if (!active || controller.signal.aborted) return;
       setState({ ticker: meta.ticker, summary: res, done: true });
       onLevelsRef.current?.(extractChartGexLevels(res));
+      if (res) {
+        onSummaryRef.current?.(res);
+      }
     };
 
     void load();
