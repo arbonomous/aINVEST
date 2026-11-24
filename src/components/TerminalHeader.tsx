@@ -18,6 +18,7 @@ import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import { THEMES, type ThemeId } from '../lib/themes';
 import type { ExplorerTab } from './MarketExplorerModal';
+import { BrandLogo } from './ui/BrandLogo';
 
 export type AppView =
   | 'home'
@@ -268,22 +269,7 @@ export function TerminalHeader({
             onClick={() => onSelectView('home')}
             title="Go to aINVEST Markets & Breaking News Front Page"
           >
-            <div className="brand-mark" aria-hidden="true">
-              a<span className="text-emerald">I</span>
-            </div>
-            {activeView === 'terminal' ? (
-              <h1 className="brand-title">
-                <span>
-                  a<span className="text-emerald">INVEST</span>
-                </span>
-              </h1>
-            ) : (
-              <span className="brand-title">
-                <span>
-                  a<span className="text-emerald">INVEST</span>
-                </span>
-              </span>
-            )}
+            <BrandLogo asHeading={activeView === 'terminal'} />
           </button>
           <span className="brand-tagline mono">
             LIVE MARKETS • WHALE FLOW • INSIDERS • AI TERMINAL
