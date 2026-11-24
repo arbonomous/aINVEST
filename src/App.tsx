@@ -989,18 +989,11 @@ export function App() {
             liveNewsCount={liveNewsCount}
             lastNewsUpdated={lastNewsUpdated}
             refreshingNews={refreshingNews}
-            trackedTrades={trackedTrades}
             onRefreshNews={() => void handleRefreshNews()}
-            onTrackCall={handleTrackCall}
-            onArmAlert={handleArmAlert}
-            onCloseTrade={handleCloseTrade}
-            onRemoveTrade={handleRemoveTrade}
-            onClearClosedTrades={handleClearClosedTrades}
             onSelectTicker={handleSelectTicker}
             onOpenExplorer={handleOpenExplorer}
             onOpenDailyBread={() => handleSelectView('daily-bread')}
             onTogglePin={handleTogglePin}
-            onNotify={showToast}
           />
         ) : activeView === 'whale-flow' ? (
           <main className="landing-main daily-bread-page-main">

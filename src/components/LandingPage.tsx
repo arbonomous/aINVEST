@@ -14,7 +14,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
-import type { DailyBreadCall } from '../lib/dailyBreadEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
@@ -26,10 +25,8 @@ import {
   type NewsArticle,
   type NewsCategory,
 } from '../lib/newsFeed';
-import type { TrackedTrade } from '../lib/paperTrades';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
-import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
 import { OvernightRadarPanel } from './OvernightRadarPanel';
 import { TradingViewEmbed } from './TradingViewEmbed';
@@ -55,23 +52,11 @@ interface LandingPageProps {
   liveNewsCount: number;
   lastNewsUpdated: string;
   refreshingNews: boolean;
-  trackedTrades: TrackedTrade[];
   onRefreshNews: () => void;
-  onTrackCall: (call: DailyBreadCall) => void;
-  onArmAlert: (params: {
-    ticker: string;
-    targetPrice: number;
-    currentPrice?: number | null;
-    label: string;
-  }) => void;
-  onCloseTrade: (id: string, livePrice?: number) => void;
-  onRemoveTrade: (id: string) => void;
-  onClearClosedTrades: () => void;
   onSelectTicker: (ticker: string) => void;
   onOpenExplorer: (tab?: ExplorerTab) => void;
   onOpenDailyBread: () => void;
   onTogglePin: (ticker: string) => void;
-  onNotify?: (message: string) => void;
 }
 
 interface PulseBenchmark {
@@ -174,18 +159,11 @@ export function LandingPage({
   liveNewsCount,
   lastNewsUpdated,
   refreshingNews,
-  trackedTrades,
   onRefreshNews,
-  onTrackCall,
-  onArmAlert,
-  onCloseTrade,
-  onRemoveTrade,
-  onClearClosedTrades,
   onSelectTicker,
   onOpenExplorer,
   onOpenDailyBread,
   onTogglePin,
-  onNotify,
 }: LandingPageProps) {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [moverTab, setMoverTab] = useState<MoverTab>('active');
@@ -1358,25 +1336,6 @@ export function LandingPage({
           </section>
         </aside>
       </div>
-
-      {/* Daily Bread — Live AI Day-Trade Call Desk (Full-Width Bottom Preview below Media Articles) */}
-      <DailyBreadDesk
-        compact
-        ctxMap={ctxMap}
-        quoteMap={quoteMap}
-        directoryMap={directoryMap}
-        breakingNews={articles}
-        trackedTrades={trackedTrades}
-        pinnedTickers={pinnedTickers}
-        onTrackCall={onTrackCall}
-        onArmAlert={onArmAlert}
-        onCloseTrade={onCloseTrade}
-        onRemoveTrade={onRemoveTrade}
-        onClearClosedTrades={onClearClosedTrades}
-        onSelectTicker={onSelectTicker}
-        onOpenFullDesk={onOpenDailyBread}
-        onNotify={onNotify}
-      />
     </main>
   );
 }
