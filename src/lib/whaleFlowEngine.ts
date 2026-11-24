@@ -1,5 +1,6 @@
 import type { HlAssetCtx } from './hyperliquidFeed';
 import type { DirectoryEntry } from './marketCatalog';
+import { buildRelayUrls } from './proxyConfig';
 import type { MarketQuote } from './universalFeed';
 
 export type OptionType = 'CALL' | 'PUT';
@@ -122,12 +123,6 @@ export interface MarketTideSummary {
 const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 const HL_WS_URL = 'wss://api.hyperliquid.xyz/ws';
 const ZERO_HASH = '0x0000000000000000000000000000000000000000000000000000000000000000';
-
-const CORS_RELAYS: Array<(targetUrl: string) => string> = [
-  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-];
 
 const OPTIONS_CACHE_TTL_MS = 2 * 60_000;
 const optionsCache = new Map<
@@ -719,7 +714,7 @@ async function fetchJsonWithRelays(
   targetUrl: string,
   signal?: AbortSignal,
 ): Promise<Record<string, unknown> | null> {
-  const urls = [targetUrl, ...CORS_RELAYS.map((fn) => fn(targetUrl))];
+  const urls = buildRelayUrls(targetUrl);
   for (const url of urls) {
     if (signal?.aborted) return null;
     const ctrl = new AbortController();

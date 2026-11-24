@@ -773,9 +773,20 @@ export function WhaleFlowDesk({
           ) : filteredContracts.length === 0 ? (
             <div className="daily-bread-loading mono">
               <span>
-                No unusual contracts match these filters right now — reset filters or scan
-                another ticker.
+                {allSummaries.length === 0
+                  ? 'Live CBOE options relays are currently blocked or rate-limited in this browser. '
+                  : 'No unusual contracts match these filters right now — reset filters or scan another ticker.'}
               </span>
+              {allSummaries.length === 0 && (
+                <button
+                  type="button"
+                  className="whale-reset-btn mono"
+                  onClick={() => void handleManualRefresh()}
+                  disabled={refreshingFlow}
+                >
+                  {refreshingFlow ? 'RETRYING…' : 'RETRY SCAN'}
+                </button>
+              )}
             </div>
           ) : (
             <div className="whale-table-scroll">

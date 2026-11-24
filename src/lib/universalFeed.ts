@@ -5,6 +5,7 @@ import {
   type HlInterval,
 } from './hyperliquidFeed';
 import type { DirectoryEntry, UsExchange } from './marketCatalog';
+import { buildRelayUrls } from './proxyConfig';
 
 export type FeedSource = 'hyperliquid' | 'yahoo' | 'directory' | 'none';
 
@@ -111,29 +112,24 @@ function mapYahooExchange(raw?: string): UsExchange | undefined {
   return undefined;
 }
 
-const CORS_RELAYS: Array<(targetUrl: string) => string> = [
-  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-];
-
 let preferredRelayIdx: number | null = null;
 
 async function fetchJsonViaRelays(
   targetUrl: string,
   signal?: AbortSignal,
 ): Promise<unknown | null> {
+  const relays = buildRelayUrls(targetUrl);
   const order: number[] = [];
-  if (preferredRelayIdx !== null) {
+  if (preferredRelayIdx !== null && preferredRelayIdx < relays.length) {
     order.push(preferredRelayIdx);
   }
-  for (let i = 0; i < CORS_RELAYS.length; i++) {
+  for (let i = 0; i < relays.length; i++) {
     if (i !== preferredRelayIdx) order.push(i);
   }
 
   for (const idx of order) {
     if (signal?.aborted) return null;
-    const proxiedUrl = CORS_RELAYS[idx](targetUrl);
+    const proxiedUrl = relays[idx];
     const timeoutController = new AbortController();
     const timer = window.setTimeout(() => timeoutController.abort(), 6500);
 

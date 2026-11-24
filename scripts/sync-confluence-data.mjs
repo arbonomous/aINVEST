@@ -218,10 +218,14 @@ function analyzeChain(ticker, payload) {
   };
 }
 
+const PROXY_BASE = (process.env.AINVEST_PROXY_URL || '').trim().replace(/\/+$/, '');
 let loggedDiag = false;
 
 async function fetchTickerCboe(ticker) {
-  const url = `https://cdn.cboe.com/api/global/delayed_quotes/options/${encodeURIComponent(ticker)}.json`;
+  const rawUrl = `https://cdn.cboe.com/api/global/delayed_quotes/options/${encodeURIComponent(ticker)}.json`;
+  const url = PROXY_BASE
+    ? `${PROXY_BASE}${PROXY_BASE.includes('?') ? '&' : '?'}url=${encodeURIComponent(rawUrl)}`
+    : rawUrl;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 9000);
   try {

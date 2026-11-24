@@ -15,6 +15,7 @@ import {
   parseOccSymbol,
   toCboeOptionSymbol,
 } from '../whaleFlowEngine';
+import { buildRelayUrls, normalizeProxyBase } from '../proxyConfig';
 
 describe('optionsPricing', () => {
   it('normCdf is a valid CDF', () => {
@@ -174,5 +175,21 @@ describe('confluenceEngine', () => {
     const whale = r.pillars.find((p) => p.id === 'whale');
     expect(whale?.active).toBe(true);
     expect(whale?.direction).toBe('bull');
+  });
+});
+
+describe('proxyConfig', () => {
+  it('validates and normalizes proxy URLs', () => {
+    expect(normalizeProxyBase('https://ainvest-proxy.user.workers.dev/')).toBe(
+      'https://ainvest-proxy.user.workers.dev',
+    );
+    expect(normalizeProxyBase('not-a-url')).toBeNull();
+    expect(normalizeProxyBase('')).toBeNull();
+  });
+
+  it('builds public fallback relay URLs when no custom proxy is set', () => {
+    const urls = buildRelayUrls('https://cdn.cboe.com/test.json');
+    expect(urls.length).toBeGreaterThanOrEqual(3);
+    expect(urls[0]).toContain('allorigins.win');
   });
 });

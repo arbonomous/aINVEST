@@ -45,9 +45,13 @@ jobs:
         run: node scripts/sync-insiders-data.mjs
 
       - name: Sync CBOE Options Flow & Dealer GEX Confluence snapshot
+        env:
+          AINVEST_PROXY_URL: ${{ vars.AINVEST_PROXY_URL }}
         run: node scripts/sync-confluence-data.mjs
 
       - name: Build production bundle
+        env:
+          VITE_PROXY_URL: ${{ vars.AINVEST_PROXY_URL }}
         run: npm run build
 
       - name: Setup GitHub Pages

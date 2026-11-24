@@ -1,3 +1,5 @@
+import { buildRelayUrls } from './proxyConfig';
+
 export type NewsCategory = 'all' | 'stocks' | 'ipos' | 'ai-tech' | 'macro';
 export type NewsSentiment = 'bull' | 'bear' | 'neutral';
 
@@ -592,11 +594,6 @@ async function fetchRssViaRss2Json(
   }
 }
 
-const XML_PROXIES: Array<(rssUrl: string) => string> = [
-  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
-  (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-];
-
 function extractXmlNodeImage(node: Element, rawDesc: string): string | undefined {
   // Check <media:content url="...">, <media:thumbnail url="...">, <enclosure url="...">
   const mediaNodes = node.getElementsByTagName('*');
@@ -623,9 +620,8 @@ async function fetchRssViaXmlProxy(
   src: RssSource,
   signal?: AbortSignal,
 ): Promise<NewsArticle[]> {
-  for (const buildProxy of XML_PROXIES) {
+  for (const endpoint of buildRelayUrls(src.url)) {
     if (signal?.aborted) return [];
-    const endpoint = buildProxy(src.url);
     const timeoutCtrl = new AbortController();
     const timer = window.setTimeout(() => timeoutCtrl.abort(), 5500);
     const onAbort = () => timeoutCtrl.abort();
