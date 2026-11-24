@@ -351,7 +351,7 @@ export function App() {
     };
 
     if (activeView === 'home') {
-      document.title = 'aINVEST — Live Stock Market News, IPOs & AI Terminal';
+      document.title = 'aINVEST News — Live Stock Market News, IPOs & AI Terminal';
       try {
         const url = new URL(window.location.href);
         let changed = false;
@@ -879,7 +879,7 @@ export function App() {
       setCopied(true);
       showToast(
         activeView === 'home'
-          ? 'aINVEST Markets link copied'
+          ? 'aINVEST News link copied'
           : activeView === 'whale-flow'
             ? 'Whale Flow Terminal link copied'
             : activeView === 'insiders'
@@ -951,7 +951,7 @@ export function App() {
         onSelectTicker={handleSelectTicker}
       />
 
-      {/* Institutional Header with Markets/Whale Flow/Daily Bread/Terminal Nav, Universal ⌘K Search, Alerts & Explorer */}
+      {/* Institutional Header with News/Whale Flow/Daily Bread/Terminal Nav, Universal ⌘K Search, Alerts & Explorer */}
       <TerminalHeader
         activeView={activeView}
         activeTicker={meta.ticker}
@@ -983,8 +983,6 @@ export function App() {
             quoteMap={quoteMap}
             directory={directory}
             directoryMap={directoryMap}
-            insidersBundle={insidersBundle}
-            optionsMap={optionsMap}
             pinnedTickers={pinnedTickers}
             themeId={themeId}
             articles={articles}

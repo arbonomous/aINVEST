@@ -16,7 +16,6 @@ import {
 import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
 import type { DailyBreadCall } from '../lib/dailyBreadEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
-import type { InsidersBundle } from '../lib/insidersEngine';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import {
   EDITORIAL_IMAGE_POOL,
@@ -30,8 +29,6 @@ import {
 import type { TrackedTrade } from '../lib/paperTrades';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
-import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
-import { ConfluenceRadarStrip } from './ConfluenceRadarStrip';
 import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
 import { OvernightRadarPanel } from './OvernightRadarPanel';
@@ -52,8 +49,6 @@ interface LandingPageProps {
   quoteMap: Record<string, MarketQuote>;
   directory: DirectoryEntry[];
   directoryMap: Record<string, DirectoryEntry>;
-  insidersBundle: InsidersBundle | null;
-  optionsMap: Record<string, TickerOptionsSummary>;
   pinnedTickers: string[];
   themeId: ThemeId;
   articles: NewsArticle[];
@@ -173,8 +168,6 @@ export function LandingPage({
   quoteMap,
   directory,
   directoryMap,
-  insidersBundle,
-  optionsMap,
   pinnedTickers,
   themeId,
   articles,
@@ -497,9 +490,9 @@ export function LandingPage({
   };
 
   return (
-    <main className="landing-main" aria-label="aINVEST Markets Front Page and Breaking Stock News">
-      {/* 1. Markets Command Hero with Procedural WebGL Flow Backdrop + Docked Breaking Wire */}
-      <section className="markets-command-hero" aria-label="Markets overview and terminal launch">
+    <main className="landing-main" aria-label="aINVEST News Front Page and Live Stock Market Wire">
+      {/* 1. News Command Hero with Procedural WebGL Flow Backdrop + Docked Breaking Wire */}
+      <section className="markets-command-hero" aria-label="News overview and terminal launch">
         <MarketFlowCanvas
           themeId={themeId}
           sentiment={marketBreadth.sentiment}
@@ -775,18 +768,6 @@ export function LandingPage({
           );
         })}
       </section>
-
-      {/* 2B. 5-Pillar Cross-Signal Confluence Radar + Macro Countdown */}
-      <ConfluenceRadarStrip
-        ctxMap={ctxMap}
-        quoteMap={quoteMap}
-        directoryMap={directoryMap}
-        insidersBundle={insidersBundle}
-        optionsMap={optionsMap}
-        articles={articles}
-        onSelectTicker={onSelectTicker}
-        onOpenScreener={() => onOpenExplorer('confluence')}
-      />
 
       {/* 3. Main 2-Column Editorial Newsroom + Sticky Live Market Rail */}
       <div className="landing-editorial-grid">
@@ -1301,7 +1282,7 @@ export function LandingPage({
 
             {pinnedTickers.length === 0 ? (
               <div className="rail-watchlist-empty">
-                <p>Pin any stock or IPO for 1-click access across Markets &amp; Terminal.</p>
+                <p>Pin any stock or IPO for 1-click access across News &amp; Terminal.</p>
                 <div className="rail-quick-pins">
                   {['ANT', 'SPCX', 'NVDA', 'JPM', 'DIS'].map((sym) => (
                     <button

@@ -267,12 +267,12 @@ export function TerminalHeader({
             type="button"
             className="brand-home-btn"
             onClick={() => onSelectView('home')}
-            title="Go to aINVEST Markets & Breaking News Front Page"
+            title="Go to aINVEST News Front Page"
           >
             <BrandLogo asHeading={activeView === 'terminal'} />
           </button>
           <span className="brand-tagline mono">
-            LIVE MARKETS • WHALE FLOW • INSIDERS • AI TERMINAL
+            NEWS • WHALE FLOW • INSIDERS • AI TERMINAL
           </span>
         </div>
       </div>
@@ -288,7 +288,7 @@ export function TerminalHeader({
             onClick={() => onSelectView('home')}
           >
             <Newspaper size={12} />
-            <span>MARKETS</span>
+            <span>NEWS</span>
           </button>
           <button
             id="nav-view-whale-flow"
@@ -336,7 +336,7 @@ export function TerminalHeader({
           <div className="session-telemetry" aria-label="Eastern Time">
             <span>
               {activeView === 'home'
-                ? 'MARKETS'
+                ? 'NEWS'
                 : activeView === 'whale-flow'
                   ? 'WHALE FLOW'
                   : activeView === 'insiders'
