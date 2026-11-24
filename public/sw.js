@@ -1,10 +1,18 @@
-const CACHE_NAME = 'ainvest-shell-v1';
+const CACHE_NAME = 'ainvest-shell-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => cache.addAll(['./', './manifest.webmanifest', './favicon.svg', './icon-192.png']))
+      .then((cache) =>
+        cache.addAll([
+          './',
+          './manifest.webmanifest?v=2',
+          './favicon.svg?v=2',
+          './favicon-32x32.png?v=2',
+          './icon-192.png?v=2',
+        ]),
+      )
       .catch(() => {}),
   );
   self.skipWaiting();
