@@ -25,7 +25,7 @@ import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
 
 export type ExplorerTab = 'confluence' | 'ipos' | 'all' | 'live247' | 'watchlist';
 
-type ScreenerPreset =
+export type ScreenerPreset =
   | 'all'
   | 'bull3'
   | 'bear3'
@@ -47,6 +47,7 @@ const SCREENER_PRESETS: ReadonlyArray<{ id: ScreenerPreset; label: string }> = [
 interface MarketExplorerModalProps {
   open: boolean;
   initialTab?: ExplorerTab;
+  initialPreset?: ScreenerPreset;
   activeTicker: string;
   ctxMap: Record<string, HlAssetCtx>;
   quoteMap?: Record<string, MarketQuote>;
@@ -104,6 +105,7 @@ const TOP_SECTORS = [
 export function MarketExplorerModal({
   open,
   initialTab = 'ipos',
+  initialPreset = 'all',
   activeTicker,
   ctxMap,
   quoteMap = {},
@@ -122,7 +124,7 @@ export function MarketExplorerModal({
   const [query, setQuery] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<'ALL' | UsExchange>('ALL');
   const [sectorFilter, setSectorFilter] = useState<string>('ALL');
-  const [screenerPreset, setScreenerPreset] = useState<ScreenerPreset>('all');
+  const [screenerPreset, setScreenerPreset] = useState<ScreenerPreset>(initialPreset);
   const [only247, setOnly247] = useState<boolean>(false);
   const [onlyIpos, setOnlyIpos] = useState<boolean>(false);
   const [visibleLimit, setVisibleLimit] = useState<number>(60);

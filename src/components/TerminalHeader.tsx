@@ -8,6 +8,7 @@ import {
   Flame,
   Globe,
   Landmark,
+  Layers,
   Newspaper,
   Search,
   Share2,
@@ -554,6 +555,17 @@ export function TerminalHeader({
                 </div>
               )}
             </div>
+
+            <button
+              id="open-confluence-screener-btn"
+              type="button"
+              className="markets-explorer-btn markets-explorer-btn--screener mono"
+              onClick={() => onOpenExplorer('confluence')}
+              title="Open 5-Pillar Multi-Signal Confluence Screener"
+            >
+              <Layers size={13} />
+              <span>SCREENER</span>
+            </button>
 
             <button
               id="open-markets-explorer-btn"

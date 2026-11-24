@@ -13,7 +13,10 @@ import { DailyBreadTickerCard } from './components/DailyBreadTickerCard';
 import { FloorChatPanel } from './components/FloorChatPanel';
 import { InsiderSqueezeTickerCard } from './components/InsiderSqueezeTickerCard';
 import { LiveRealtimeRibbon } from './components/LiveRealtimeRibbon';
-import type { ExplorerTab } from './components/MarketExplorerModal';
+import type {
+  ExplorerTab,
+  ScreenerPreset,
+} from './components/MarketExplorerModal';
 import { OptionsFlowTickerCard } from './components/OptionsFlowTickerCard';
 import type { ChartTradePlan } from './components/RealtimeCandleChart';
 import { RoomSwitcherBar } from './components/RoomSwitcherBar';
@@ -24,6 +27,7 @@ import { TerminalHeader, type AppView } from './components/TerminalHeader';
 import { ValuationCalculatorPanel } from './components/ValuationCalculatorPanel';
 import { WarRoomConfluenceCard } from './components/WarRoomConfluenceCard';
 import { resolveTickerMeta } from './data/tickers';
+import type { ConfluencePillarId } from './lib/confluenceEngine';
 
 const LandingPage = lazy(() =>
   import('./components/LandingPage').then((m) => ({ default: m.LandingPage })),
@@ -172,8 +176,35 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
+const VALID_SCREENER_PRESETS = new Set<ScreenerPreset>([
+  'all',
+  'bull3',
+  'bear3',
+  'whale',
+  'insider',
+  'squeeze',
+  'earnings',
+]);
+
+function getInitialScreenerFromUrl(): {
+  open: boolean;
+  preset: ScreenerPreset;
+} {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('screener')?.trim() as ScreenerPreset | undefined;
+    if (raw && VALID_SCREENER_PRESETS.has(raw)) {
+      return { open: true, preset: raw };
+    }
+  } catch {
+    // Ignore
+  }
+  return { open: false, preset: 'all' };
+}
+
 export function App() {
   const initialRoute = useMemo(() => getInitialRouteFromUrl(), []);
+  const initialScreener = useMemo(() => getInitialScreenerFromUrl(), []);
   const [themeId, setThemeId] = useState<ThemeId>(() => getInitialTheme());
   const [activeView, setActiveView] = useState<AppView>(initialRoute.view);
   const [activeTicker, setActiveTicker] = useState<string>(initialRoute.ticker);
@@ -191,8 +222,13 @@ export function App() {
   const [recentTickers, setRecentTickers] = useState<string[]>(() =>
     loadRecentTickers(),
   );
-  const [explorerOpen, setExplorerOpen] = useState<boolean>(false);
-  const [explorerTab, setExplorerTab] = useState<ExplorerTab>('ipos');
+  const [explorerOpen, setExplorerOpen] = useState<boolean>(initialScreener.open);
+  const [explorerTab, setExplorerTab] = useState<ExplorerTab>(
+    initialScreener.open ? 'confluence' : 'ipos',
+  );
+  const [screenerPreset, setScreenerPreset] = useState<ScreenerPreset>(
+    initialScreener.preset,
+  );
   const [calcOverrides, setCalcOverrides] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
@@ -1116,48 +1152,80 @@ export function App() {
                   articles={articles}
                   tradePlan={activeTradePlan}
                   gexLevels={activeGexLevels}
+                  onSelectPillar={(pillarId: ConfluencePillarId) => {
+                    const targetId =
+                      pillarId === 'tech'
+                        ? 'warroom-pillar-tech'
+                        : pillarId === 'whale'
+                          ? 'warroom-pillar-whale'
+                          : pillarId === 'insider'
+                            ? 'warroom-pillar-insider'
+                            : pillarId === 'perp247'
+                              ? 'warroom-pillar-live247'
+                              : 'warroom-pillar-catalyst';
+                    const el = document.getElementById(targetId);
+                    if (!el) return;
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.remove('warroom-pillar-highlight');
+                    void el.offsetWidth;
+                    el.classList.add('warroom-pillar-highlight');
+                    window.setTimeout(
+                      () => el.classList.remove('warroom-pillar-highlight'),
+                      1200,
+                    );
+                  }}
                   onNotify={showToast}
                 />
 
                 {/* Panel A — Daily Bread Live AI Day-Trade Call */}
-                <DailyBreadTickerCard
-                  meta={meta}
-                  liveQuote={activeQuote}
-                  breakingNews={articles}
-                  isTracked={isActiveCallTracked}
-                  onTrackCall={handleTrackCall}
-                  onArmAlert={handleArmAlert}
-                  onPlanUpdate={setActiveTradePlan}
-                  onSelectPriceLevel={handleSelectPriceLevel}
-                  onNotify={showToast}
-                />
+                <div id="warroom-pillar-tech">
+                  <DailyBreadTickerCard
+                    meta={meta}
+                    liveQuote={activeQuote}
+                    breakingNews={articles}
+                    isTracked={isActiveCallTracked}
+                    onTrackCall={handleTrackCall}
+                    onArmAlert={handleArmAlert}
+                    onPlanUpdate={setActiveTradePlan}
+                    onSelectPriceLevel={handleSelectPriceLevel}
+                    onNotify={showToast}
+                  />
+                </div>
 
                 {/* Panel B — Unusual Options Flow, GEX Walls & Max Pain */}
-                <OptionsFlowTickerCard
-                  meta={meta}
-                  livePrice={activeQuote?.price ?? null}
-                  onSelectPriceLevel={handleSelectPriceLevel}
-                  onOptionsLevelsUpdate={setActiveGexLevels}
-                  onOptionsSummaryUpdate={handleOptionsSummaryUpdate}
-                  onSimulateContract={setSimContract}
-                  onArmAlert={handleArmAlert}
-                />
+                <div id="warroom-pillar-whale">
+                  <OptionsFlowTickerCard
+                    meta={meta}
+                    livePrice={activeQuote?.price ?? null}
+                    onSelectPriceLevel={handleSelectPriceLevel}
+                    onOptionsLevelsUpdate={setActiveGexLevels}
+                    onOptionsSummaryUpdate={handleOptionsSummaryUpdate}
+                    onSimulateContract={setSimContract}
+                    onArmAlert={handleArmAlert}
+                  />
+                </div>
 
                 {/* Panel C — Congress, SEC Form 4 Cluster Buys & FINRA Short Squeeze */}
-                <InsiderSqueezeTickerCard
-                  meta={meta}
-                  onOpenInsidersForTicker={handleOpenInsidersForTicker}
-                />
+                <div id="warroom-pillar-insider">
+                  <InsiderSqueezeTickerCard
+                    meta={meta}
+                    onOpenInsidersForTicker={handleOpenInsidersForTicker}
+                  />
+                </div>
 
                 {/* Panel C — Universal 7-Timeframe Confluence & Technical Consensus Gauge */}
-                <TechnicalGaugePanel meta={meta} themeId={themeId} />
+                <div id="warroom-pillar-live247">
+                  <TechnicalGaugePanel meta={meta} themeId={themeId} />
+                </div>
 
                 {/* Panel D — Real-Time aINVEST AI Signal Brief & IPO Tracker */}
-                <AiIntelligencePanel
-                  meta={meta}
-                  liveQuote={activeQuote}
-                  onSelectPriceLevel={handleSelectPriceLevel}
-                />
+                <div id="warroom-pillar-catalyst">
+                  <AiIntelligencePanel
+                    meta={meta}
+                    liveQuote={activeQuote}
+                    onSelectPriceLevel={handleSelectPriceLevel}
+                  />
+                </div>
 
                 {/* Panel E — Dynamic Valuation & Position P&L Calculator */}
                 <ValuationCalculatorPanel
@@ -1181,6 +1249,7 @@ export function App() {
           <MarketExplorerModal
             open={explorerOpen}
             initialTab={explorerTab}
+            initialPreset={screenerPreset}
             activeTicker={meta.ticker}
             ctxMap={ctxMap}
             quoteMap={quoteMap}
@@ -1193,7 +1262,10 @@ export function App() {
             pinnedTickers={pinnedTickers}
             onTogglePin={handleTogglePin}
             onSelectTicker={handleSelectTicker}
-            onClose={() => setExplorerOpen(false)}
+            onClose={() => {
+              setExplorerOpen(false);
+              setScreenerPreset('all');
+            }}
           />
         )}
 

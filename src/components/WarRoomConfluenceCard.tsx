@@ -6,7 +6,10 @@ import {
   Layers,
 } from 'lucide-react';
 import type { TickerMeta } from '../data/tickers';
-import { computeTickerConfluence } from '../lib/confluenceEngine';
+import {
+  computeTickerConfluence,
+  type ConfluencePillarId,
+} from '../lib/confluenceEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { InsidersBundle } from '../lib/insidersEngine';
 import type { DirectoryEntry } from '../lib/marketCatalog';
@@ -27,6 +30,7 @@ interface WarRoomConfluenceCardProps {
   tradePlan: ChartTradePlan | null;
   gexLevels: ChartGexLevels | null;
   optionsSummary?: TickerOptionsSummary | null;
+  onSelectPillar?: (pillarId: ConfluencePillarId) => void;
   onNotify?: (message: string) => void;
 }
 
@@ -40,6 +44,7 @@ function WarRoomConfluenceCardComponent({
   tradePlan,
   gexLevels,
   optionsSummary = null,
+  onSelectPillar,
   onNotify,
 }: WarRoomConfluenceCardProps) {
   const report = useMemo(
@@ -171,12 +176,15 @@ function WarRoomConfluenceCardComponent({
           </div>
         </SpotlightSurface>
 
-        {/* Auditable 5-Pillar Breakdown Rows */}
+        {/* Auditable 5-Pillar Breakdown Rows (Click to jump to proof panel) */}
         <div className="cf-pillars-list">
           {report.pillars.map((p) => (
-            <div
+            <button
               key={p.id}
-              className={`cf-pillar-row${p.active ? '' : ' cf-pillar-row--idle'}`}
+              type="button"
+              className={`cf-pillar-row cf-pillar-row--btn${p.active ? '' : ' cf-pillar-row--idle'}`}
+              onClick={() => onSelectPillar?.(p.id)}
+              title={`Jump to ${p.label} panel`}
             >
               <div className="cf-pillar-head mono">
                 <span
@@ -198,7 +206,7 @@ function WarRoomConfluenceCardComponent({
                 />
               </div>
               <p className="cf-pillar-evidence">{p.evidence}</p>
-            </div>
+            </button>
           ))}
         </div>
       </div>
