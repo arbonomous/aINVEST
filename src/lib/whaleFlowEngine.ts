@@ -738,6 +738,35 @@ async function fetchJsonWithRelays(
   return null;
 }
 
+interface WhaleSnapshotPayload {
+  generatedAt: string;
+  source: string;
+  summaries: TickerOptionsSummary[];
+  allTickers?: Record<string, TickerOptionsSummary>;
+  hotContracts: OptionContractFlow[];
+}
+
+let cachedWhaleSnapshot: WhaleSnapshotPayload | null = null;
+
+async function fetchPreSyncedWhaleSnapshot(
+  signal?: AbortSignal,
+): Promise<WhaleSnapshotPayload | null> {
+  if (cachedWhaleSnapshot) return cachedWhaleSnapshot;
+  try {
+    const res = await fetch('./data/whale-flow-snapshot.json', {
+      signal,
+      cache: 'no-cache',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as WhaleSnapshotPayload;
+    if (!data || !Array.isArray(data.summaries)) return null;
+    cachedWhaleSnapshot = data;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchTickerOptionsFlow(
   ticker: string,
   fallbackSpot?: number | null,
@@ -759,13 +788,27 @@ export async function fetchTickerOptionsFlow(
   const cboeSym = toCboeOptionSymbol(clean);
   const url = `https://cdn.cboe.com/api/global/delayed_quotes/options/${encodeURIComponent(cboeSym)}.json`;
   const payload = await fetchJsonWithRelays(url, signal);
-  if (!payload) return null;
-
-  const summary = analyzeCboeOptionsPayload(clean, payload, fallbackSpot);
-  if (summary) {
-    optionsCache.set(clean, { summary, fetchedAt: Date.now() });
+  if (payload) {
+    const summary = analyzeCboeOptionsPayload(clean, payload, fallbackSpot);
+    if (summary) {
+      optionsCache.set(clean, { summary, fetchedAt: Date.now() });
+      return summary;
+    }
   }
-  return summary;
+
+  const snap = await fetchPreSyncedWhaleSnapshot(signal);
+  const fallback =
+    snap?.allTickers?.[clean] ??
+    snap?.allTickers?.[cboeSym] ??
+    snap?.summaries.find((s) => s.ticker === clean || s.ticker === cboeSym) ??
+    null;
+  if (fallback) {
+    const normalized: TickerOptionsSummary = { ...fallback, ticker: clean };
+    optionsCache.set(clean, { summary: normalized, fetchedAt: Date.now() });
+    return normalized;
+  }
+
+  return null;
 }
 
 export const WHALE_FLOW_LEADERS = [
@@ -799,6 +842,16 @@ export async function scanMarketOptionsFlow(
     if (r.status === 'fulfilled' && r.value) {
       summaries.push(r.value);
       allHot.push(...r.value.unusualContracts.slice(0, 6));
+    }
+  }
+
+  if (summaries.length === 0) {
+    const snap = await fetchPreSyncedWhaleSnapshot(signal);
+    if (snap && snap.summaries.length > 0) {
+      return {
+        summaries: snap.summaries,
+        hotContracts: snap.hotContracts,
+      };
     }
   }
 
