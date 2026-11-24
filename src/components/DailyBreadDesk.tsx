@@ -32,12 +32,17 @@ import {
   type TrackedTrade,
 } from '../lib/paperTrades';
 import { exportDailyBreadSnapshotCard } from '../lib/snapshotCard';
+import type { ThemeId } from '../lib/themes';
 import {
   directoryEntryToQuote,
   fetchUniversalCandles,
   hlCtxToQuote,
   type MarketQuote,
 } from '../lib/universalFeed';
+import { AnimatedNumber } from './ui/AnimatedNumber';
+import { MarketFlowCanvas } from './ui/MarketFlowCanvas';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 type BasketId = 'leaders' | 'ipos' | 'megacap';
 type DirectionFilter = 'ALL' | BreadDirection | 'TOP';
@@ -57,6 +62,19 @@ const BASKETS: Record<BasketId, { label: string; tickers: string[] }> = {
   },
 };
 
+const BASKET_TAB_ITEMS: ReadonlyArray<SegmentedTabItem<BasketId>> = [
+  { id: 'leaders', label: 'AI & High Beta' },
+  { id: 'ipos', label: '2026 IPOs' },
+  { id: 'megacap', label: 'Mega Cap & ETFs' },
+];
+
+const DIR_FILTER_ITEMS: ReadonlyArray<SegmentedTabItem<DirectionFilter>> = [
+  { id: 'ALL', label: 'All' },
+  { id: 'LONG', label: 'Longs' },
+  { id: 'SHORT', label: 'Shorts' },
+  { id: 'TOP', label: 'High Conv.' },
+];
+
 interface DailyBreadDeskProps {
   ctxMap: Record<string, HlAssetCtx>;
   quoteMap: Record<string, MarketQuote>;
@@ -65,6 +83,7 @@ interface DailyBreadDeskProps {
   trackedTrades: TrackedTrade[];
   pinnedTickers?: string[];
   compact?: boolean;
+  themeId?: ThemeId;
   onTrackCall: (call: DailyBreadCall) => void;
   onArmAlert: (params: {
     ticker: string;
@@ -92,6 +111,7 @@ export function DailyBreadDesk({
   trackedTrades,
   pinnedTickers = [],
   compact = false,
+  themeId = 'slate',
   onTrackCall,
   onArmAlert,
   onCloseTrade,
@@ -332,12 +352,25 @@ export function DailyBreadDesk({
     return set;
   }, [trackedTrades]);
 
+  const deskSentiment = useMemo(() => {
+    const active = summaryCounts.longs + summaryCounts.shorts;
+    if (active <= 0) return 0.2;
+    return (summaryCounts.longs - summaryCounts.shorts) / active;
+  }, [summaryCounts.longs, summaryCounts.shorts]);
+
   return (
     <section
       className={`daily-bread-section${compact ? ' daily-bread-section--compact' : ''}`}
       aria-label="Daily Bread AI Day-Trade Calls"
     >
-      <div className="daily-bread-header">
+      <div className={`daily-bread-header${!compact ? ' desk-hero-banner' : ''}`}>
+        {!compact && (
+          <MarketFlowCanvas
+            themeId={themeId}
+            sentiment={deskSentiment}
+            className="desk-hero-canvas"
+          />
+        )}
         <div className="daily-bread-title-block">
           <div className="daily-bread-eyebrow-row">
             <span className="daily-bread-badge mono">
@@ -395,43 +428,22 @@ export function DailyBreadDesk({
 
       {/* Controls Bar: Basket Tabs + Direction Filters + Instant Any-Ticker AI Scan */}
       <div className="daily-bread-toolbar">
-        <div className="bread-tabs-group" role="tablist" aria-label="Scanner basket">
-          {(Object.entries(BASKETS) as Array<[BasketId, { label: string }]>).map(
-            ([id, info]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={basket === id}
-                className={`bread-basket-tab mono${basket === id ? ' active' : ''}`}
-                onClick={() => setBasket(id)}
-              >
-                {info.label}
-              </button>
-            ),
-          )}
-        </div>
+        <SegmentedTabs
+          items={BASKET_TAB_ITEMS}
+          value={basket}
+          onChange={setBasket}
+          ariaLabel="Scanner basket"
+          className="bread-seg-tabs"
+        />
 
-        <div className="bread-filter-group" role="tablist" aria-label="Filter calls by direction">
-          {(
-            [
-              ['ALL', 'All'],
-              ['LONG', 'Longs'],
-              ['SHORT', 'Shorts'],
-              ['TOP', 'High Conv.'],
-            ] as Array<[DirectionFilter, string]>
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={dirFilter === id}
-              className={`news-cat-tab mono${dirFilter === id ? ' active' : ''}`}
-              onClick={() => setDirFilter(id)}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="bread-filter-group">
+          <SegmentedTabs
+            items={DIR_FILTER_ITEMS}
+            value={dirFilter}
+            onChange={setDirFilter}
+            ariaLabel="Filter calls by direction"
+            size="sm"
+          />
           <button
             type="button"
             className={`watchlist-filter-pill mono${watchlistOnly ? ' active' : ''}`}
@@ -632,55 +644,65 @@ export function DailyBreadDesk({
             const isLong = call.direction === 'LONG';
             const isShort = call.direction === 'SHORT';
             const dirTone = isLong ? 'bull' : isShort ? 'bear' : 'amber';
+            const spotTone = isLong ? 'emerald' : isShort ? 'crimson' : 'amber';
             const pxUp = call.changePct !== null && call.changePct >= 0;
 
             return (
-              <article
+              <SpotlightSurface
                 key={call.ticker}
-                className={`bread-call-card bread-call-card--${dirTone}`}
+                tone={spotTone}
+                className="bread-call-shell"
               >
-                <div className="bread-card-top">
-                  <div className="bread-card-identity">
-                    <span className={`bread-dir-pill bread-dir-pill--${dirTone} mono`}>
-                      {isLong ? (
-                        <TrendingUp size={11} />
-                      ) : isShort ? (
-                        <TrendingDown size={11} />
-                      ) : (
-                        <Crosshair size={11} />
-                      )}
-                      <span>{call.direction}</span>
-                    </span>
-                    <button
-                      type="button"
-                      className="bread-ticker-btn mono"
-                      onClick={() => onSelectTicker(call.ticker)}
-                    >
-                      {call.ticker}
-                    </button>
-                    <span className="bread-company-name">{call.name}</span>
-                  </div>
-
-                  <div className="bread-card-score mono">
-                    <span className={`bread-grade-pill bread-grade-pill--${dirTone}`}>
-                      {call.grade}
-                    </span>
-                    <span className="bread-conf-pct">{call.confidence}%</span>
-                  </div>
-                </div>
-
-                <div className="bread-setup-row mono">
-                  <span className="bread-setup-name">{call.setupName}</span>
-                  <div className="bread-live-px-cluster">
-                    <span className="bread-live-px">{fmtPx(call.livePrice)}</span>
-                    {call.changePct !== null && (
-                      <span className={pxUp ? 'text-emerald' : 'text-crimson'}>
-                        {pxUp ? '+' : ''}
-                        {call.changePct.toFixed(2)}%
+                <article
+                  className={`bread-call-card bread-call-card--${dirTone}`}
+                >
+                  <div className="bread-card-top">
+                    <div className="bread-card-identity">
+                      <span className={`bread-dir-pill bread-dir-pill--${dirTone} mono`}>
+                        {isLong ? (
+                          <TrendingUp size={11} />
+                        ) : isShort ? (
+                          <TrendingDown size={11} />
+                        ) : (
+                          <Crosshair size={11} />
+                        )}
+                        <span>{call.direction}</span>
                       </span>
-                    )}
+                      <button
+                        type="button"
+                        className="bread-ticker-btn mono"
+                        onClick={() => onSelectTicker(call.ticker)}
+                      >
+                        {call.ticker}
+                      </button>
+                      <span className="bread-company-name">{call.name}</span>
+                    </div>
+
+                    <div className="bread-card-score mono">
+                      <span className={`bread-grade-pill bread-grade-pill--${dirTone}`}>
+                        {call.grade}
+                      </span>
+                      <span className="bread-conf-pct">{call.confidence}%</span>
+                    </div>
                   </div>
-                </div>
+
+                  <div className="bread-setup-row mono">
+                    <span className="bread-setup-name">{call.setupName}</span>
+                    <div className="bread-live-px-cluster">
+                      <AnimatedNumber
+                        value={call.livePrice}
+                        prefix="$"
+                        decimals={call.livePrice >= 10 ? 2 : 3}
+                        className="bread-live-px"
+                      />
+                      {call.changePct !== null && (
+                        <span className={pxUp ? 'text-emerald' : 'text-crimson'}>
+                          {pxUp ? '+' : ''}
+                          {call.changePct.toFixed(2)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
 
                 {/* 4-Level Trade Execution Grid */}
                 <div className="bread-levels-strip mono">
@@ -837,7 +859,8 @@ export function DailyBreadDesk({
                     </button>
                   </div>
                 </div>
-              </article>
+                </article>
+              </SpotlightSurface>
             );
           })}
         </div>

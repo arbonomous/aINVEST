@@ -24,6 +24,10 @@ import {
   exportCongressSnapshotCard,
   exportSqueezeSnapshotCard,
 } from '../lib/snapshotCard';
+import type { ThemeId } from '../lib/themes';
+import { MarketFlowCanvas } from './ui/MarketFlowCanvas';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 type InsidersTab = 'congress' | 'form4' | 'squeeze';
 type CongressFilter = 'ALL' | 'BUY' | 'SELL' | 'D' | 'R' | 'HOUSE' | 'SENATE' | 'LARGE';
@@ -33,6 +37,7 @@ type SqueezeFilter = 'ALL' | 'EXTREME' | 'HIGH' | 'SHORT50' | 'FTD1M';
 interface InsidersDeskProps {
   pinnedTickers?: string[];
   initialSearch?: string;
+  themeId?: ThemeId;
   onSelectTicker: (ticker: string) => void;
   onNotify?: (message: string) => void;
 }
@@ -60,6 +65,7 @@ function fmtStamp(iso: string): string {
 export function InsidersDesk({
   pinnedTickers = [],
   initialSearch = '',
+  themeId = 'slate',
   onSelectTicker,
   onNotify,
 }: InsidersDeskProps) {
@@ -199,11 +205,30 @@ export function InsidersDesk({
     return { buyVol, sellVol, buys, sells };
   }, [filteredCongress]);
 
+  const pillarTabItems = useMemo<ReadonlyArray<SegmentedTabItem<InsidersTab>>>(
+    () => [
+      { id: 'congress', label: `CONGRESS (${bundle?.congress.length ?? 0})` },
+      {
+        id: 'form4',
+        label: `C-SUITE FORM 4 (${bundle?.form4.length ?? 0})${
+          clusterBuys.length > 0 ? ` • ${clusterBuys.length} CLUSTERS` : ''
+        }`,
+      },
+      { id: 'squeeze', label: `SHORT SQUEEZE (${bundle?.squeeze.length ?? 0})` },
+    ],
+    [bundle, clusterBuys.length],
+  );
+
   return (
     <div className="insiders-shell">
       {/* 1. Institutional Masthead + Official Data Freshness Strip */}
       <section className="whale-card" aria-label="Congress, C-Suite Insider Flow & Short Squeeze Desk">
-        <div className="whale-hero-head">
+        <div className="whale-hero-head desk-hero-banner">
+          <MarketFlowCanvas
+            themeId={themeId}
+            sentiment={activeTab === 'squeeze' ? -0.3 : 0.25}
+            className="desk-hero-canvas"
+          />
           <div className="whale-title-block">
             <div className="daily-bread-eyebrow-row">
               <span className="insiders-badge mono">
@@ -261,41 +286,13 @@ export function InsidersDesk({
 
         {/* Primary Pillar Tabs + Universal Search + Watchlist Toggle */}
         <div className="insiders-nav-toolbar">
-          <div className="insiders-pillar-tabs mono" role="tablist" aria-label="Insiders intelligence pillars">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'congress'}
-              className={`insiders-pillar-btn${activeTab === 'congress' ? ' active' : ''}`}
-              onClick={() => setActiveTab('congress')}
-            >
-              <Landmark size={12} />
-              <span>CONGRESS ({bundle?.congress.length ?? 0})</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'form4'}
-              className={`insiders-pillar-btn${activeTab === 'form4' ? ' active' : ''}`}
-              onClick={() => setActiveTab('form4')}
-            >
-              <Building2 size={12} />
-              <span>
-                C-SUITE FORM 4 ({bundle?.form4.length ?? 0})
-                {clusterBuys.length > 0 ? ` • ${clusterBuys.length} CLUSTERS` : ''}
-              </span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'squeeze'}
-              className={`insiders-pillar-btn${activeTab === 'squeeze' ? ' active' : ''}`}
-              onClick={() => setActiveTab('squeeze')}
-            >
-              <Flame size={12} />
-              <span>SHORT SQUEEZE ({bundle?.squeeze.length ?? 0})</span>
-            </button>
-          </div>
+          <SegmentedTabs
+            items={pillarTabItems}
+            value={activeTab}
+            onChange={setActiveTab}
+            ariaLabel="Insiders intelligence pillars"
+            className="insiders-seg-tabs"
+          />
 
           <div className="insiders-search-cluster">
             <div className="insiders-search-box">
@@ -371,40 +368,45 @@ export function InsidersDesk({
                 {politicianLeaders.slice(0, 6).map((pol) => {
                   const active = selectedPolitician === pol.politician;
                   return (
-                    <button
+                    <SpotlightSurface
                       key={pol.politician}
-                      type="button"
-                      className={`politician-card mono${active ? ' active' : ''}`}
-                      onClick={() =>
-                        setSelectedPolitician(active ? '' : pol.politician)
-                      }
+                      tone={pol.buyCount >= pol.sellCount ? 'emerald' : 'amber'}
+                      className="politician-card-shell"
                     >
-                      <div className="politician-card-top">
-                        <strong className="politician-name">{pol.politician}</strong>
-                        <span
-                          className={`party-pill party-pill--${pol.party.toLowerCase()}`}
-                        >
-                          {pol.party}-{pol.state}
-                        </span>
-                      </div>
-                      <div className="politician-card-sub">
-                        <span>{pol.chamber}</span>
-                        <span>•</span>
-                        <span>{pol.committees[0] ?? 'Congress'}</span>
-                      </div>
-                      <div className="politician-card-metrics">
-                        <span className="text-emerald">{pol.buyCount}B</span>
-                        <span className="text-crimson">{pol.sellCount}S</span>
-                        <span className="text-amber">~{fmtUsd(pol.estVolumeUsd)}</span>
-                      </div>
-                      <div className="politician-tickers">
-                        {pol.topTickers.map((sym) => (
-                          <span key={sym} className="politician-tk-chip">
-                            ${sym}
+                      <button
+                        type="button"
+                        className={`politician-card mono${active ? ' active' : ''}`}
+                        onClick={() =>
+                          setSelectedPolitician(active ? '' : pol.politician)
+                        }
+                      >
+                        <div className="politician-card-top">
+                          <strong className="politician-name">{pol.politician}</strong>
+                          <span
+                            className={`party-pill party-pill--${pol.party.toLowerCase()}`}
+                          >
+                            {pol.party}-{pol.state}
                           </span>
-                        ))}
-                      </div>
-                    </button>
+                        </div>
+                        <div className="politician-card-sub">
+                          <span>{pol.chamber}</span>
+                          <span>•</span>
+                          <span>{pol.committees[0] ?? 'Congress'}</span>
+                        </div>
+                        <div className="politician-card-metrics">
+                          <span className="text-emerald">{pol.buyCount}B</span>
+                          <span className="text-crimson">{pol.sellCount}S</span>
+                          <span className="text-amber">~{fmtUsd(pol.estVolumeUsd)}</span>
+                        </div>
+                        <div className="politician-tickers">
+                          {pol.topTickers.map((sym) => (
+                            <span key={sym} className="politician-tk-chip">
+                              ${sym}
+                            </span>
+                          ))}
+                        </div>
+                      </button>
+                    </SpotlightSurface>
                   );
                 })}
               </div>

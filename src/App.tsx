@@ -921,6 +921,7 @@ export function App() {
               quoteMap={quoteMap}
               directoryMap={directoryMap}
               pinnedTickers={pinnedTickers}
+              themeId={themeId}
               onSelectTicker={handleSelectTicker}
               onSimulateContract={setSimContract}
               onNotify={showToast}
@@ -933,6 +934,7 @@ export function App() {
               key={insidersSearch || 'all'}
               pinnedTickers={pinnedTickers}
               initialSearch={insidersSearch}
+              themeId={themeId}
               onSelectTicker={handleSelectTicker}
               onNotify={showToast}
             />
@@ -953,6 +955,7 @@ export function App() {
               breakingNews={articles}
               trackedTrades={trackedTrades}
               pinnedTickers={pinnedTickers}
+              themeId={themeId}
               onTrackCall={handleTrackCall}
               onArmAlert={handleArmAlert}
               onCloseTrade={handleCloseTrade}
@@ -982,6 +985,7 @@ export function App() {
               initialHlCtx={activeHlCtx}
               fallbackQuote={activeQuote}
               isPinned={isPinned}
+              themeId={themeId}
               onTogglePin={() => handleTogglePin(meta.ticker)}
               onLiveHlUpdate={handleLiveHlUpdate}
               onLiveQuoteUpdate={handleLiveQuoteUpdate}

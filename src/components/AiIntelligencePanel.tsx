@@ -4,6 +4,8 @@ import type { TickerMeta } from '../data/tickers';
 import { generateAiBrief, type AiMarketBrief } from '../lib/aiBriefEngine';
 import type { HlCandle } from '../lib/hyperliquidFeed';
 import { fetchUniversalCandles, type MarketQuote } from '../lib/universalFeed';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 interface AiIntelligencePanelProps {
   meta: TickerMeta;
@@ -98,12 +100,29 @@ export function AiIntelligencePanel({
     };
   }, [meta.unlockWaves, nowMs]);
 
+  const tabItems = useMemo<ReadonlyArray<SegmentedTabItem<BriefTab>>>(
+    () => [
+      { id: 'overview', label: 'OVERVIEW' },
+      { id: 'levels', label: 'LEVELS' },
+      { id: 'positioning', label: 'FLOW' },
+      { id: 'catalyst', label: meta.isIpo ? 'IPO / S-1' : 'CATALYST' },
+    ],
+    [meta.isIpo],
+  );
+
   const biasClass =
     brief?.bias === 'bull'
       ? 'panel-badge--emerald'
       : brief?.bias === 'bear'
         ? 'panel-badge--crimson'
         : 'panel-badge--amber';
+
+  const spotTone =
+    brief?.bias === 'bull'
+      ? 'emerald'
+      : brief?.bias === 'bear'
+        ? 'crimson'
+        : 'amber';
 
   return (
     <section
@@ -122,69 +141,58 @@ export function AiIntelligencePanel({
 
       <div className="panel-body">
         {/* Regime Summary Card */}
-        <div className="ai-regime-box">
-          <div className="ai-regime-top">
-            <span className="ai-regime-label mono">
-              {brief ? brief.regime : `SYNTHESIZING ${meta.ticker}…`}
-            </span>
-            {brief && (
-              <span
-                className={`ai-bias-pill mono ${
-                  brief.bias === 'bull'
-                    ? 'text-emerald'
-                    : brief.bias === 'bear'
-                      ? 'text-crimson'
-                      : 'text-amber'
-                }`}
-              >
-                {brief.bias === 'bull'
-                  ? 'BULLISH'
-                  : brief.bias === 'bear'
-                    ? 'BEARISH'
-                    : 'NEUTRAL'}
+        <SpotlightSurface tone={spotTone} className="ai-regime-spot-wrap">
+          <div className="ai-regime-box">
+            <div className="ai-regime-top">
+              <span className="ai-regime-label mono">
+                {brief ? brief.regime : `SYNTHESIZING ${meta.ticker}…`}
               </span>
+              {brief && (
+                <span
+                  className={`ai-bias-pill mono ${
+                    brief.bias === 'bull'
+                      ? 'text-emerald'
+                      : brief.bias === 'bear'
+                        ? 'text-crimson'
+                        : 'text-amber'
+                  }`}
+                >
+                  {brief.bias === 'bull'
+                    ? 'BULLISH'
+                    : brief.bias === 'bear'
+                      ? 'BEARISH'
+                      : 'NEUTRAL'}
+                </span>
+              )}
+            </div>
+
+            <p className="ai-headline">
+              {loading && !brief
+                ? `Pulling live 15m/1h structure, VWAP, momentum, and flow for ${meta.ticker}…`
+                : brief?.summaryHeadline ??
+                  `Loading quantitative structure for ${meta.ticker}.`}
+            </p>
+
+            {brief && (
+              <div className="ai-conviction-bar" aria-label={`AI conviction ${brief.conviction}%`}>
+                <div
+                  className={`ai-conviction-fill ai-conviction-fill--${brief.bias}`}
+                  style={{ width: `${brief.conviction}%` }}
+                />
+              </div>
             )}
           </div>
-
-          <p className="ai-headline">
-            {loading && !brief
-              ? `Pulling live 15m/1h structure, VWAP, momentum, and flow for ${meta.ticker}…`
-              : brief?.summaryHeadline ??
-                `Loading quantitative structure for ${meta.ticker}.`}
-          </p>
-
-          {brief && (
-            <div className="ai-conviction-bar" aria-label={`AI conviction ${brief.conviction}%`}>
-              <div
-                className={`ai-conviction-fill ai-conviction-fill--${brief.bias}`}
-                style={{ width: `${brief.conviction}%` }}
-              />
-            </div>
-          )}
-        </div>
+        </SpotlightSurface>
 
         {/* Interactive Prompt / Drilldown Tabs */}
-        <div className="ai-tabs-row" role="tablist" aria-label="AI brief views">
-          {(
-            [
-              ['overview', 'OVERVIEW'],
-              ['levels', 'LEVELS'],
-              ['positioning', 'FLOW'],
-              ['catalyst', meta.isIpo ? 'IPO / S-1' : 'CATALYST'],
-            ] as Array<[BriefTab, string]>
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              className={`ai-tab-btn mono${tab === id ? ' active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          items={tabItems}
+          value={tab}
+          onChange={setTab}
+          ariaLabel="AI brief views"
+          size="sm"
+          className="ai-seg-tabs"
+        />
 
         {/* Tab Body */}
         {tab === 'overview' && brief && (

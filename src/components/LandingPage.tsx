@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Star,
   TrendingUp,
+  Zap,
 } from 'lucide-react';
 import { CURATED_MAP, FEATURED_IPOS } from '../data/tickers';
 import type { DailyBreadCall } from '../lib/dailyBreadEngine';
@@ -32,6 +33,10 @@ import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
 import { OvernightRadarPanel } from './OvernightRadarPanel';
 import { TradingViewEmbed } from './TradingViewEmbed';
+import { AnimatedNumber } from './ui/AnimatedNumber';
+import { MarketFlowCanvas } from './ui/MarketFlowCanvas';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 const TV_TIMELINE_SCRIPT =
   'https://s3.tradingview.com/external-embedding/embed-widget-timeline.js';
@@ -362,6 +367,84 @@ export function LandingPage({
     return [...candidates].sort((a, b) => b.volumeUsd - a.volumeUsd).slice(0, 7);
   }, [directory, ctxMap, moverTab]);
 
+  // Compute live market breadth & regime telemetry to drive the hero status & WebGL flow tint
+  const marketBreadth = useMemo(() => {
+    let advancers = 0;
+    let decliners = 0;
+    const seen = new Set<string>();
+
+    for (const d of directory) {
+      if (d.isDerivativeListing || !d.lastSale || d.lastSale < 2) continue;
+      if ((d.marketCap ?? 0) < 2e9 && !ctxMap[d.ticker]) continue;
+      const hl = ctxMap[d.ticker];
+      const pct =
+        hl?.prevDayPx && hl.prevDayPx > 0
+          ? ((hl.markPx - hl.prevDayPx) / hl.prevDayPx) * 100
+          : d.pctChange;
+      if (pct === null || !Number.isFinite(pct) || Math.abs(pct) > 120) continue;
+      seen.add(d.ticker);
+      if (pct >= 0) advancers += 1;
+      else decliners += 1;
+    }
+
+    for (const [ticker, ctx] of Object.entries(ctxMap)) {
+      if (seen.has(ticker)) continue;
+      const refPx = CURATED_MAP[ticker]?.referencePrice ?? ctx.prevDayPx;
+      if (!refPx || refPx <= 0) continue;
+      const pct = ((ctx.markPx - refPx) / refPx) * 100;
+      if (pct >= 0) advancers += 1;
+      else decliners += 1;
+    }
+
+    const total = advancers + decliners;
+    const advPct = total > 0 ? Math.round((advancers / total) * 100) : 54;
+    const sentiment = total > 0 ? (advancers - decliners) / total : 0.15;
+    const regime =
+      advPct >= 58 ? 'RISK-ON' : advPct <= 42 ? 'RISK-OFF' : 'BALANCED';
+    const live247Count = Object.keys(ctxMap).length;
+
+    return {
+      advancers,
+      decliners,
+      advPct,
+      sentiment,
+      regime,
+      live247Count,
+      trackedCount: directory.length > 0 ? directory.length : 7290,
+    };
+  }, [directory, ctxMap]);
+
+  const feedTabItems = useMemo<ReadonlyArray<SegmentedTabItem<FeedTab>>>(
+    () => [
+      { id: 'all', label: 'Top Stories' },
+      { id: 'stocks', label: 'Stocks' },
+      { id: 'ipos', label: 'IPOs' },
+      { id: 'ai-tech', label: 'Tech & AI' },
+      { id: 'macro', label: 'Macro & Fed' },
+      { id: 'watchlist', label: `★ Watchlist (${pinnedTickers.length})` },
+      { id: 'tv-wire', label: 'Live Wire' },
+    ],
+    [pinnedTickers.length],
+  );
+
+  const moverTabItems = useMemo<ReadonlyArray<SegmentedTabItem<MoverTab>>>(
+    () => [
+      { id: 'active', label: 'Active' },
+      { id: 'gainers', label: 'Gainers' },
+      { id: 'losers', label: 'Losers' },
+    ],
+    [],
+  );
+
+  const maxMoverAbsPct = useMemo(() => {
+    let maxVal = 2.5;
+    for (const m of marketMovers) {
+      const a = Math.abs(m.pct);
+      if (a > maxVal) maxVal = a;
+    }
+    return maxVal;
+  }, [marketMovers]);
+
   const tvTimelineConfig = useMemo(
     () =>
       JSON.stringify({
@@ -408,40 +491,182 @@ export function LandingPage({
 
   return (
     <main className="landing-main" aria-label="aINVEST Markets Front Page and Breaking Stock News">
-      {/* 1. Breaking News Dispatch Bar */}
-      <section className="breaking-dispatch-bar" aria-label="Breaking market alert">
-        <div className="breaking-dispatch-left">
-          <span className="breaking-label mono">BREAKING</span>
-          <a
-            href={breakingLead.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="breaking-headline-link"
-          >
-            {breakingLead.title}
-          </a>
+      {/* 1. Markets Command Hero with Procedural WebGL Flow Backdrop + Docked Breaking Wire */}
+      <section className="markets-command-hero" aria-label="Markets overview and terminal launch">
+        <MarketFlowCanvas
+          themeId={themeId}
+          sentiment={marketBreadth.sentiment}
+        />
+
+        <div className="markets-command-inner">
+          <div className="markets-command-copy">
+            <div className="markets-command-kicker mono">
+              <span>UNIVERSAL MARKET TERMINAL</span>
+              <span className="editorial-dot" aria-hidden="true">•</span>
+              <span
+                className={
+                  marketBreadth.regime === 'RISK-ON'
+                    ? 'text-emerald'
+                    : marketBreadth.regime === 'RISK-OFF'
+                      ? 'text-crimson'
+                      : 'text-amber'
+                }
+              >
+                {marketBreadth.regime} REGIME
+              </span>
+            </div>
+
+            <h1 className="markets-command-title">
+              Every US stock &amp; IPO. One live war room.
+            </h1>
+
+            <p className="markets-command-sub">
+              Real-time candlesticks, quantitative AI briefs, 17-indicator consensus,
+              options flow, and open floor chat across{' '}
+              <strong>{marketBreadth.trackedCount.toLocaleString()}+</strong>{' '}
+              NASDAQ, NYSE, AMEX &amp; 24/7 markets.
+            </p>
+
+            <div className="markets-command-actions">
+              <button
+                type="button"
+                id="landing-open-terminal-btn"
+                className="command-btn-primary mono"
+                onClick={() => onSelectTicker(heroStory.tickers[0] || 'ANT')}
+              >
+                <Activity size={13} />
+                <span>OPEN LIVE TERMINAL</span>
+                <ArrowRight size={13} />
+              </button>
+
+              <button
+                type="button"
+                id="landing-browse-markets-btn"
+                className="command-btn-secondary mono"
+                onClick={() => onOpenExplorer('all')}
+              >
+                <Globe size={13} />
+                <span>
+                  BROWSE{' '}
+                  <span className="command-btn-count">
+                    {marketBreadth.trackedCount.toLocaleString()}+{' '}
+                  </span>
+                  MARKETS
+                </span>
+              </button>
+
+              <button
+                type="button"
+                id="landing-daily-bread-btn"
+                className="command-btn-ghost mono"
+                onClick={onOpenDailyBread}
+              >
+                <Zap size={13} />
+                <span>DAILY BREAD AI</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="markets-command-telemetry" aria-label="Live market breadth telemetry">
+            <div className="telemetry-breadth-card">
+              <div className="telemetry-breadth-top mono">
+                <span className="telemetry-label">MARKET BREADTH</span>
+                <span
+                  className={
+                    marketBreadth.advPct >= 50 ? 'text-emerald' : 'text-crimson'
+                  }
+                >
+                  {marketBreadth.advPct}% ADVANCING
+                </span>
+              </div>
+              <div className="telemetry-breadth-bar" role="presentation">
+                <span
+                  className="telemetry-breadth-fill"
+                  style={{ width: `${marketBreadth.advPct}%` }}
+                />
+              </div>
+              <div className="telemetry-breadth-counts mono">
+                <span className="text-emerald">
+                  ▲ {marketBreadth.advancers.toLocaleString()} Up
+                </span>
+                <span className="text-crimson">
+                  ▼ {marketBreadth.decliners.toLocaleString()} Down
+                </span>
+              </div>
+            </div>
+
+            <div className="telemetry-stat-grid mono">
+              <button
+                type="button"
+                className="telemetry-stat-cell"
+                onClick={() => onOpenExplorer('live247')}
+              >
+                <span className="telemetry-stat-k">24/7 PERPS</span>
+                <span className="telemetry-stat-v text-emerald">
+                  {marketBreadth.live247Count > 0
+                    ? marketBreadth.live247Count
+                    : 'LIVE'}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="telemetry-stat-cell"
+                onClick={() => onOpenExplorer('ipos')}
+              >
+                <span className="telemetry-stat-k">2026 IPOs</span>
+                <span className="telemetry-stat-v text-amber">
+                  {FEATURED_IPOS.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="telemetry-stat-cell"
+                onClick={onRefreshNews}
+              >
+                <span className="telemetry-stat-k">LIVE WIRE</span>
+                <span className="telemetry-stat-v">
+                  {liveNewsCount > 0 ? liveNewsCount : articles.length}
+                </span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="breaking-dispatch-right">
-          {breakingLead.tickers.slice(0, 2).map((t) => renderTickerChip(t))}
-          <button
-            type="button"
-            className="dispatch-refresh-btn mono"
-            onClick={onRefreshNews}
-            disabled={refreshingNews}
-            title="Refresh breaking stock news wire"
-          >
-            <RefreshCw size={11} className={refreshingNews ? 'spin-icon' : ''} />
-            <span>
-              {liveNewsCount > 0 ? `LIVE (${lastNewsUpdated})` : lastNewsUpdated}
-            </span>
-          </button>
+        {/* Docked Breaking News Dispatch Strip */}
+        <div className="breaking-dispatch-bar breaking-dispatch-bar--docked" aria-label="Breaking market alert">
+          <div className="breaking-dispatch-left">
+            <span className="breaking-label mono">BREAKING</span>
+            <a
+              href={breakingLead.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="breaking-headline-link"
+            >
+              {breakingLead.title}
+            </a>
+          </div>
+
+          <div className="breaking-dispatch-right">
+            {breakingLead.tickers.slice(0, 2).map((t) => renderTickerChip(t))}
+            <button
+              type="button"
+              className="dispatch-refresh-btn mono"
+              onClick={onRefreshNews}
+              disabled={refreshingNews}
+              title="Refresh breaking stock news wire"
+            >
+              <RefreshCw size={11} className={refreshingNews ? 'spin-icon' : ''} />
+              <span>
+                {liveNewsCount > 0 ? `LIVE (${lastNewsUpdated})` : lastNewsUpdated}
+              </span>
+            </button>
+          </div>
         </div>
       </section>
 
-      {/* 2. Live Market Pulse Benchmark Strip (Yahoo Finance Index Bar style) */}
+      {/* 2. Live Market Pulse Benchmark Strip */}
       <section className="market-pulse-strip" aria-label="Live market benchmarks">
-        {PULSE_BENCHMARKS.map((bm) => {
+        {PULSE_BENCHMARKS.map((bm, idx) => {
           const primary = resolveLivePrice(bm.ticker, ctxMap, quoteMap, directoryMap);
           const resolved =
             primary.price !== null || !bm.fallbackTicker
@@ -457,54 +682,89 @@ export function LandingPage({
                 };
           const isUp = resolved.pct !== null ? resolved.pct >= 0 : true;
           const strokeColor = isUp ? palette.bull : palette.bear;
+          const pts = isUp ? bm.sparkUp : bm.sparkDown;
+          const gradId = `pulse-grad-${idx}-${isUp ? 'up' : 'dn'}`;
+          const lastCoord = pts.split(' ').at(-1)?.split(',') ?? ['86', '12'];
 
           return (
-            <button
+            <SpotlightSurface
               key={bm.ticker}
-              type="button"
-              className="pulse-card"
-              onClick={() => onSelectTicker(resolved.ticker)}
+              tone={isUp ? 'emerald' : 'crimson'}
+              className="pulse-card-wrap"
             >
-              <div className="pulse-card-top">
-                <div className="pulse-card-id">
-                  <span className="pulse-card-label mono">{bm.label}</span>
-                  <span className="pulse-card-tag mono">{bm.tag}</span>
-                </div>
-                <svg
-                  viewBox="0 0 88 28"
-                  className="pulse-sparkline"
-                  aria-hidden="true"
-                >
-                  <polyline
-                    fill="none"
-                    stroke={strokeColor}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={isUp ? bm.sparkUp : bm.sparkDown}
-                  />
-                </svg>
-              </div>
-
-              <div className="pulse-card-name">{bm.name}</div>
-
-              <div className="pulse-card-bottom mono">
-                <span className="pulse-card-price">
-                  {resolved.price !== null ? `$${resolved.price.toFixed(2)}` : 'Live →'}
-                </span>
-                {resolved.pct !== null && (
-                  <span
-                    className={`pulse-card-pct ${
-                      isUp ? 'text-emerald' : 'text-crimson'
-                    }`}
+              <button
+                type="button"
+                className="pulse-card"
+                onClick={() => onSelectTicker(resolved.ticker)}
+              >
+                <div className="pulse-card-top">
+                  <div className="pulse-card-id">
+                    <span className="pulse-card-label mono">{bm.label}</span>
+                    <span className="pulse-card-tag mono">{bm.tag}</span>
+                  </div>
+                  <svg
+                    viewBox="0 0 90 30"
+                    className="pulse-sparkline"
+                    aria-hidden="true"
                   >
-                    {isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                    {isUp ? '+' : ''}
-                    {resolved.pct.toFixed(2)}%
-                  </span>
-                )}
-              </div>
-            </button>
+                    <defs>
+                      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={strokeColor} stopOpacity="0.28" />
+                        <stop offset="100%" stopColor={strokeColor} stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    <polygon
+                      fill={`url(#${gradId})`}
+                      points={`2,28 ${pts} 86,28`}
+                    />
+                    <polyline
+                      fill="none"
+                      stroke={strokeColor}
+                      strokeWidth="1.9"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      points={pts}
+                    />
+                    <circle
+                      cx={lastCoord[0]}
+                      cy={lastCoord[1]}
+                      r="2.4"
+                      fill={strokeColor}
+                    />
+                  </svg>
+                </div>
+
+                <div className="pulse-card-name">{bm.name}</div>
+
+                <div className="pulse-card-bottom mono">
+                  <AnimatedNumber
+                    value={resolved.price}
+                    prefix="$"
+                    decimals={2}
+                    fallback="Live →"
+                    className="pulse-card-price"
+                  />
+                  {resolved.pct !== null && (
+                    <span
+                      className={`pulse-card-pct ${
+                        isUp
+                          ? 'pulse-card-pct--up text-emerald'
+                          : 'pulse-card-pct--down text-crimson'
+                      }`}
+                    >
+                      {isUp ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
+                      <AnimatedNumber
+                        value={resolved.pct}
+                        prefix={isUp ? '+' : ''}
+                        suffix="%"
+                        decimals={2}
+                        flashOnTick={false}
+                      />
+                    </span>
+                  )}
+                </div>
+              </button>
+            </SpotlightSurface>
           );
         })}
       </section>
@@ -514,164 +774,175 @@ export function LandingPage({
         {/* LEFT COLUMN: Editorial Lead Story + Feature Duo + Live Breaking Stream */}
         <div className="landing-news-column">
           {/* Lead Hero Editorial Story */}
-          <article className="editorial-hero-card">
-            <a
-              href={heroStory.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="editorial-hero-media"
-            >
-              <img
-                src={heroStory.imageUrl || getArticleFallbackImage(heroStory)}
-                alt={heroStory.title}
-                className="editorial-hero-img"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  if (!img.dataset.fallbackApplied) {
-                    img.dataset.fallbackApplied = '1';
-                    img.src = getArticleFallbackImage(heroStory);
-                  }
-                }}
-              />
-              <span className="editorial-media-kicker mono">
-                {heroStory.isLiveFetched ? 'LIVE' : 'TOP STORY'} •{' '}
-                {heroStory.source.toUpperCase()}
-              </span>
-            </a>
-
-            <div className="editorial-hero-body">
-              <div className="editorial-meta-row mono">
-                <span className="editorial-source">{heroStory.source}</span>
-                <span className="editorial-dot" aria-hidden="true">
-                  •
-                </span>
-                <span>{formatRelativeAge(heroStory.publishedAt)}</span>
-                {heroStory.isLiveFetched && (
-                  <span className="news-live-tag">LIVE WIRE</span>
-                )}
-                {heroStory.sentiment && heroStory.sentiment !== 'neutral' && (
-                  <span className={`news-sent-tag news-sent-tag--${heroStory.sentiment}`}>
-                    {heroStory.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
-                  </span>
-                )}
-              </div>
-
-              <h1 className="editorial-hero-headline">
-                <a
-                  href={heroStory.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {heroStory.title}
-                </a>
-              </h1>
-
-              <p className="editorial-hero-deck">{heroStory.summary}</p>
-
-              <div className="editorial-hero-footer">
-                {heroStory.tickers.length > 0 && (
-                  <div className="news-tickers-row">
-                    {heroStory.tickers.map((t) => renderTickerChip(t))}
-                  </div>
-                )}
-
-                <div className="editorial-hero-actions">
-                  <button
-                    type="button"
-                    className="hero-warroom-cta mono"
-                    onClick={() => onSelectTicker(heroStory.tickers[0] || 'ANT')}
-                  >
-                    <span>OPEN {heroStory.tickers[0] || 'ANT'} TERMINAL</span>
-                    <ArrowRight size={13} />
-                  </button>
-                  <a
-                    href={heroStory.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hero-read-link mono"
-                  >
-                    <span>READ</span>
-                    <ExternalLink size={11} />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          {/* 2-Up Secondary Editorial Feature Cards */}
-          <div className="editorial-feature-duo">
-            {featurePair.map((story, idx) => (
-              <article key={story.id} className="editorial-feature-card">
-                <a
-                  href={story.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="editorial-feature-media"
-                >
-                  <img
-                    src={
-                      story.imageUrl ||
-                      (idx === 0
-                        ? './news/story-ai-compute.jpg'
-                        : './news/story-wallstreet-macro.jpg')
+          <SpotlightSurface tone="neutral" className="editorial-hero-shell">
+            <article className="editorial-hero-card">
+              <a
+                href={heroStory.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="editorial-hero-media"
+              >
+                <img
+                  src={heroStory.imageUrl || getArticleFallbackImage(heroStory)}
+                  alt={heroStory.title}
+                  className="editorial-hero-img"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    if (!img.dataset.fallbackApplied) {
+                      img.dataset.fallbackApplied = '1';
+                      img.src = getArticleFallbackImage(heroStory);
                     }
-                    alt={story.title}
-                    className="editorial-feature-img"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const img = e.currentTarget;
-                      if (!img.dataset.fallbackApplied) {
-                        img.dataset.fallbackApplied = '1';
-                        img.src =
-                          idx === 0
-                            ? './news/story-ai-compute.jpg'
-                            : './news/story-wallstreet-macro.jpg';
-                      }
-                    }}
-                  />
-                </a>
+                  }}
+                />
+                <span className="editorial-hero-scrim" aria-hidden="true" />
+                <span className="editorial-media-kicker mono">
+                  {heroStory.isLiveFetched ? 'LIVE' : 'TOP STORY'} •{' '}
+                  {heroStory.source.toUpperCase()}
+                </span>
+              </a>
 
-                <div className="editorial-feature-body">
+              <div className="editorial-hero-body">
+                <div className="editorial-hero-top">
                   <div className="editorial-meta-row mono">
-                    <span className="editorial-source">{story.source}</span>
+                    <span className="editorial-source">{heroStory.source}</span>
                     <span className="editorial-dot" aria-hidden="true">
                       •
                     </span>
-                    <span>{formatRelativeAge(story.publishedAt)}</span>
-                    {story.isLiveFetched && (
-                      <span className="news-live-tag">LIVE</span>
+                    <span>{formatRelativeAge(heroStory.publishedAt)}</span>
+                    {heroStory.isLiveFetched && (
+                      <span className="news-live-tag">LIVE WIRE</span>
                     )}
-                    {story.sentiment && story.sentiment !== 'neutral' && (
-                      <span className={`news-sent-tag news-sent-tag--${story.sentiment}`}>
-                        {story.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
+                    {heroStory.sentiment && heroStory.sentiment !== 'neutral' && (
+                      <span className={`news-sent-tag news-sent-tag--${heroStory.sentiment}`}>
+                        {heroStory.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
                       </span>
                     )}
                   </div>
 
-                  <h2 className="editorial-feature-headline">
+                  <h2 className="editorial-hero-headline">
                     <a
-                      href={story.url}
+                      href={heroStory.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {story.title}
+                      {heroStory.title}
                     </a>
                   </h2>
 
-                  <p className="editorial-feature-summary">{story.summary}</p>
+                  <p className="editorial-hero-deck">{heroStory.summary}</p>
+                </div>
 
-                  {story.tickers.length > 0 && (
+                <div className="editorial-hero-footer">
+                  {heroStory.tickers.length > 0 && (
                     <div className="news-tickers-row">
-                      {story.tickers.slice(0, 3).map((t) => renderTickerChip(t))}
+                      {heroStory.tickers.map((t) => renderTickerChip(t))}
                     </div>
                   )}
+
+                  <div className="editorial-hero-actions">
+                    <button
+                      type="button"
+                      className="hero-warroom-cta mono"
+                      onClick={() => onSelectTicker(heroStory.tickers[0] || 'ANT')}
+                    >
+                      <span>OPEN {heroStory.tickers[0] || 'ANT'} TERMINAL</span>
+                      <ArrowRight size={13} />
+                    </button>
+                    <a
+                      href={heroStory.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hero-read-link mono"
+                    >
+                      <span>READ</span>
+                      <ExternalLink size={11} />
+                    </a>
+                  </div>
                 </div>
-              </article>
+              </div>
+            </article>
+          </SpotlightSurface>
+
+          {/* 2-Up Secondary Editorial Feature Cards */}
+          <div className="editorial-feature-duo">
+            {featurePair.map((story, idx) => (
+              <SpotlightSurface
+                key={story.id}
+                tone="neutral"
+                className="editorial-feature-shell"
+              >
+                <article className="editorial-feature-card">
+                  <a
+                    href={story.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="editorial-feature-media"
+                  >
+                    <img
+                      src={
+                        story.imageUrl ||
+                        (idx === 0
+                          ? './news/story-ai-compute.jpg'
+                          : './news/story-wallstreet-macro.jpg')
+                      }
+                      alt={story.title}
+                      className="editorial-feature-img"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (!img.dataset.fallbackApplied) {
+                          img.dataset.fallbackApplied = '1';
+                          img.src =
+                            idx === 0
+                              ? './news/story-ai-compute.jpg'
+                              : './news/story-wallstreet-macro.jpg';
+                        }
+                      }}
+                    />
+                  </a>
+
+                  <div className="editorial-feature-body">
+                    <div className="editorial-meta-row mono">
+                      <span className="editorial-source">{story.source}</span>
+                      <span className="editorial-dot" aria-hidden="true">
+                        •
+                      </span>
+                      <span>{formatRelativeAge(story.publishedAt)}</span>
+                      {story.isLiveFetched && (
+                        <span className="news-live-tag">LIVE</span>
+                      )}
+                      {story.sentiment && story.sentiment !== 'neutral' && (
+                        <span className={`news-sent-tag news-sent-tag--${story.sentiment}`}>
+                          {story.sentiment === 'bull' ? 'BULLISH' : 'BEARISH'}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="editorial-feature-headline">
+                      <a
+                        href={story.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {story.title}
+                      </a>
+                    </h3>
+
+                    <p className="editorial-feature-summary">{story.summary}</p>
+
+                    {story.tickers.length > 0 && (
+                      <div className="news-tickers-row editorial-feature-tickers">
+                        {story.tickers.slice(0, 3).map((t) => renderTickerChip(t))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              </SpotlightSurface>
             ))}
           </div>
 
-          {/* Breaking News Feed Section with Yahoo-Style Category Tabs */}
+          {/* Breaking News Feed Section with Smooth Sliding Category Tabs */}
           <section className="news-stream-panel" aria-label="Latest breaking stock market news">
             <div className="news-stream-header">
               <div className="panel-title-group">
@@ -682,30 +953,13 @@ export function LandingPage({
                 </span>
               </div>
 
-              <div className="news-tabs-row" role="tablist" aria-label="Filter news by topic">
-                {(
-                  [
-                    ['all', 'Top Stories'],
-                    ['stocks', 'Stocks'],
-                    ['ipos', 'IPOs'],
-                    ['ai-tech', 'Tech & AI'],
-                    ['macro', 'Macro & Fed'],
-                    ['watchlist', `★ Watchlist (${pinnedTickers.length})`],
-                    ['tv-wire', 'Live Wire'],
-                  ] as Array<[FeedTab, string]>
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="tab"
-                    aria-selected={feedTab === id}
-                    className={`news-cat-tab mono${feedTab === id ? ' active' : ''}`}
-                    onClick={() => setFeedTab(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedTabs
+                items={feedTabItems}
+                value={feedTab}
+                onChange={setFeedTab}
+                ariaLabel="Filter news by topic"
+                className="news-seg-tabs"
+              />
             </div>
 
             {feedTab === 'tv-wire' ? (
@@ -794,46 +1048,8 @@ export function LandingPage({
           </section>
         </div>
 
-        {/* RIGHT COLUMN: Sticky Yahoo-Finance-Style Market Data Rail */}
+        {/* RIGHT COLUMN: Sticky High-Signal Live Market Rail */}
         <aside className="landing-market-rail" aria-label="Live market movers, trending tickers and IPO radar">
-          {/* Quick Terminal & Explorer Launch Card */}
-          <section className="rail-card rail-launch-card">
-            <div className="rail-launch-head">
-              <span className="rail-launch-eyebrow mono">UNIVERSAL LIVE TERMINAL</span>
-              <h2 className="rail-launch-title">
-                Every US stock &amp; IPO. One live war room.
-              </h2>
-              <p className="rail-launch-sub">
-                Open real-time charts, quantitative AI briefs, 17-indicator consensus,
-                P&amp;L calculators, and live trader chat across{' '}
-                <strong>
-                  {directory.length > 0
-                    ? `${directory.length.toLocaleString()}+`
-                    : '7,290+'}
-                </strong>{' '}
-                NASDAQ, NYSE, AMEX &amp; 24/7 markets.
-              </p>
-            </div>
-            <div className="rail-launch-actions">
-              <button
-                type="button"
-                className="rail-primary-btn mono"
-                onClick={() => onSelectTicker('ANT')}
-              >
-                <Activity size={13} />
-                <span>OPEN LIVE TERMINAL</span>
-              </button>
-              <button
-                type="button"
-                className="rail-secondary-btn mono"
-                onClick={() => onOpenExplorer('all')}
-              >
-                <Globe size={13} />
-                <span>BROWSE ALL</span>
-              </button>
-            </div>
-          </section>
-
           {/* Trending Tickers */}
           <section className="rail-card" aria-label="Trending stock tickers">
             <div className="rail-card-header">
@@ -882,9 +1098,12 @@ export function LandingPage({
                     </div>
 
                     <div className="rail-quote-right mono">
-                      <span className="rail-quote-price">
-                        {price !== null ? `$${price.toFixed(2)}` : '—'}
-                      </span>
+                      <AnimatedNumber
+                        value={price}
+                        prefix="$"
+                        decimals={2}
+                        className="rail-quote-price"
+                      />
                       <span
                         className={`rail-quote-pct ${
                           pct === null ? '' : isUp ? 'text-emerald' : 'text-crimson'
@@ -903,26 +1122,13 @@ export function LandingPage({
           <section className="rail-card" aria-label="Market movers">
             <div className="rail-card-header">
               <h2 className="panel-title">MARKET MOVERS</h2>
-              <div className="interval-tabs" role="tablist" aria-label="Mover category">
-                {(
-                  [
-                    ['active', 'Active'],
-                    ['gainers', 'Gainers'],
-                    ['losers', 'Losers'],
-                  ] as Array<[MoverTab, string]>
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="tab"
-                    aria-selected={moverTab === id}
-                    className={`interval-tab${moverTab === id ? ' active' : ''}`}
-                    onClick={() => setMoverTab(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedTabs
+                items={moverTabItems}
+                value={moverTab}
+                onChange={setMoverTab}
+                ariaLabel="Mover category"
+                size="sm"
+              />
             </div>
 
             <div className="rail-quote-list">
@@ -931,6 +1137,10 @@ export function LandingPage({
               ) : (
                 marketMovers.map((m) => {
                   const isUp = m.pct >= 0;
+                  const barPct = Math.max(
+                    8,
+                    Math.min(100, Math.round((Math.abs(m.pct) / maxMoverAbsPct) * 100)),
+                  );
                   return (
                     <button
                       key={m.ticker}
@@ -955,6 +1165,14 @@ export function LandingPage({
                         >
                           {isUp ? '+' : ''}
                           {m.pct.toFixed(2)}%
+                        </span>
+                        <span className="rail-mover-bar" aria-hidden="true">
+                          <span
+                            className={`rail-mover-bar-fill ${
+                              isUp ? 'rail-mover-bar-fill--up' : 'rail-mover-bar-fill--down'
+                            }`}
+                            style={{ width: `${barPct}%` }}
+                          />
                         </span>
                       </div>
                     </button>

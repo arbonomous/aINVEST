@@ -11,8 +11,17 @@ import { CURATED_MAP } from '../data/tickers';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import type { MarketQuote } from '../lib/universalFeed';
+import { AnimatedNumber } from './ui/AnimatedNumber';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 type RadarTab = 'gaps' | 'squeeze' | 'liquid';
+
+const RADAR_TABS: ReadonlyArray<SegmentedTabItem<RadarTab>> = [
+  { id: 'gaps', label: 'Implied Gaps' },
+  { id: 'squeeze', label: 'Funding Squeeze' },
+  { id: 'liquid', label: '24/7 Volume' },
+];
 
 interface OvernightRadarPanelProps {
   ctxMap: Record<string, HlAssetCtx>;
@@ -40,10 +49,6 @@ function fmtCompactUsd(n: number): string {
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
   return `$${n.toFixed(0)}`;
-}
-
-function fmtPx(n: number): string {
-  return n >= 10 ? `$${n.toFixed(2)}` : `$${n.toFixed(3)}`;
 }
 
 export function OvernightRadarPanel({
@@ -151,26 +156,14 @@ export function OvernightRadarPanel({
           )}
         </div>
 
-        <div className="overnight-tabs-row mono" role="tablist" aria-label="Overnight radar sort">
-          {(
-            [
-              ['gaps', 'Implied Gaps'],
-              ['squeeze', 'Funding Squeeze'],
-              ['liquid', '24/7 Volume'],
-            ] as Array<[RadarTab, string]>
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={tab === id}
-              className={`overnight-tab-btn${tab === id ? ' active' : ''}`}
-              onClick={() => setTab(id)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs
+          items={RADAR_TABS}
+          value={tab}
+          onChange={setTab}
+          ariaLabel="Overnight radar sort"
+          size="sm"
+          className="overnight-seg-tabs"
+        />
       </div>
 
       {displayedRows.length === 0 ? (
@@ -186,70 +179,80 @@ export function OvernightRadarPanel({
             const isUp = row.gapPct >= 0;
             const fundingNegative = row.fundingApr < 0;
             return (
-              <button
+              <SpotlightSurface
                 key={row.ticker}
-                type="button"
-                className="overnight-row-card"
-                onClick={() => onSelectTicker(row.ticker)}
+                tone={isUp ? 'emerald' : 'crimson'}
+                className="overnight-row-wrap"
               >
-                <div className="overnight-row-top">
-                  <div className="overnight-id">
-                    <span className="overnight-sym">{row.ticker}</span>
-                    <span className="overnight-name">{row.name}</span>
+                <button
+                  type="button"
+                  className="overnight-row-card"
+                  onClick={() => onSelectTicker(row.ticker)}
+                >
+                  <div className="overnight-row-top">
+                    <div className="overnight-id">
+                      <span className="overnight-sym">{row.ticker}</span>
+                      <span className="overnight-name">{row.name}</span>
+                    </div>
+                    <AnimatedNumber
+                      value={row.markPx}
+                      prefix="$"
+                      decimals={row.markPx >= 10 ? 2 : 3}
+                      className="overnight-px"
+                    />
                   </div>
-                  <span className="overnight-px">{fmtPx(row.markPx)}</span>
-                </div>
 
-                <div className="overnight-row-bottom">
-                  <span
-                    className={`overnight-gap-pill ${
-                      isUp ? 'text-emerald' : 'text-crimson'
-                    }`}
-                  >
-                    {isUp ? (
-                      <ArrowUpRight size={11} />
-                    ) : (
-                      <ArrowDownRight size={11} />
-                    )}
-                    <span>
-                      {isUp ? '+' : ''}
-                      {row.gapPct.toFixed(2)}%
-                    </span>
-                  </span>
-
-                  <span
-                    className={`overnight-funding-val ${
-                      row.fundingApr <= -10
-                        ? 'text-emerald'
-                        : row.fundingApr >= 18
-                          ? 'text-crimson'
-                          : 'text-muted'
-                    }`}
-                    title="Annualized 24/7 perp funding rate (negative = shorts paying longs)"
-                  >
-                    {fundingNegative ? '' : '+'}
-                    {row.fundingApr.toFixed(0)}% APR
-                  </span>
-
-                  <span className="overnight-vol">
-                    {tab === 'squeeze' && row.oiUsd > 0
-                      ? `OI ${fmtCompactUsd(row.oiUsd)}`
-                      : `VOL ${fmtCompactUsd(row.volUsd)}`}
-                  </span>
-
-                  {row.squeezeTag && (
+                  <div className="overnight-row-bottom">
                     <span
-                      className={`overnight-sq-badge ${
-                        row.squeezeTag === 'SHORT SQUEEZE'
-                          ? 'overnight-sq-badge--bull'
-                          : 'overnight-sq-badge--bear'
+                      className={`overnight-gap-pill ${
+                        isUp ? 'text-emerald' : 'text-crimson'
                       }`}
                     >
-                      {row.squeezeTag === 'SHORT SQUEEZE' ? 'SQUEEZE' : 'CROWDED'}
+                      {isUp ? (
+                        <ArrowUpRight size={11} />
+                      ) : (
+                        <ArrowDownRight size={11} />
+                      )}
+                      <span>
+                        {isUp ? '+' : ''}
+                        {row.gapPct.toFixed(2)}%
+                      </span>
                     </span>
-                  )}
-                </div>
-              </button>
+
+                    <span
+                      className={`overnight-funding-val ${
+                        row.fundingApr <= -10
+                          ? 'text-emerald'
+                          : row.fundingApr >= 18
+                            ? 'text-crimson'
+                            : 'text-muted'
+                      }`}
+                      title="Annualized 24/7 perp funding rate (negative = shorts paying longs)"
+                    >
+                      {fundingNegative ? '' : '+'}
+                      {row.fundingApr.toFixed(0)}% APR
+                    </span>
+
+                    <span className="overnight-vol">
+                      {tab === 'squeeze' && row.oiUsd > 0
+                        ? `OI ${fmtCompactUsd(row.oiUsd)}`
+                        : `VOL ${fmtCompactUsd(row.volUsd)}`}
+                    </span>
+
+                    {row.squeezeTag && (
+                      <span
+                        className={`overnight-sq-badge ${
+                          row.squeezeTag === 'SHORT SQUEEZE'
+                            ? 'overnight-sq-badge--bull'
+                            : 'overnight-sq-badge--bear'
+                        }`}
+                      >
+                        {row.squeezeTag === 'SHORT SQUEEZE' ? 'SQUEEZE' : 'CROWDED'}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              </SpotlightSurface>
             );
           })}
         </div>

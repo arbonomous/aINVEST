@@ -12,17 +12,21 @@ import {
   HyperliquidStream,
   type HlAssetCtx,
 } from '../lib/hyperliquidFeed';
+import type { ThemeId } from '../lib/themes';
 import {
   fetchUniversalQuote,
   hlCtxToQuote,
   type MarketQuote,
 } from '../lib/universalFeed';
+import { AnimatedNumber } from './ui/AnimatedNumber';
+import { MarketFlowCanvas } from './ui/MarketFlowCanvas';
 
 interface LiveRealtimeRibbonProps {
   meta: TickerMeta;
   initialHlCtx: HlAssetCtx | null;
   fallbackQuote: MarketQuote | null;
   isPinned: boolean;
+  themeId?: ThemeId;
   onTogglePin: () => void;
   onLiveHlUpdate: (ctx: HlAssetCtx) => void;
   onLiveQuoteUpdate: (quote: MarketQuote) => void;
@@ -57,6 +61,7 @@ export function LiveRealtimeRibbon({
   initialHlCtx,
   fallbackQuote,
   isPinned,
+  themeId = 'slate',
   onTogglePin,
   onLiveHlUpdate,
   onLiveQuoteUpdate,
@@ -185,6 +190,8 @@ export function LiveRealtimeRibbon({
       : null;
   const isUp = diff !== null ? diff >= 0 : pct !== null ? pct >= 0 : true;
   const isHyperliquid = activeQuote?.source === 'hyperliquid' || Boolean(meta.hlCoin);
+  const ribbonSentiment =
+    pct !== null ? Math.max(-1, Math.min(1, pct / 4)) : isUp ? 0.25 : -0.25;
 
   const venueStatusText = meta.hlCoin
     ? `${meta.sector} • ${meta.hlCoin} ${wsConnected ? 'WS 24/7' : '24/7'}`
@@ -200,9 +207,14 @@ export function LiveRealtimeRibbon({
 
   return (
     <section
-      className="terminal-card live-ribbon"
+      className="terminal-card live-ribbon live-ribbon--enhanced"
       aria-label={`Live Market Feed for ${meta.name} (${meta.ticker})`}
     >
+      <MarketFlowCanvas
+        themeId={themeId}
+        sentiment={ribbonSentiment}
+        className="live-ribbon-canvas"
+      />
       <div className="live-ribbon-left">
         <div className="live-ribbon-badge-group">
           <span
@@ -237,11 +249,18 @@ export function LiveRealtimeRibbon({
                   : ''
             }`}
           >
-            {livePrice !== null
-              ? `$${livePrice.toFixed(2)}`
-              : meta.ipoStatus === 'upcoming'
-                ? meta.ipoRangeLabel ?? 'PRE-IPO'
-                : 'Live Chart'}
+            {livePrice !== null ? (
+              <AnimatedNumber
+                value={livePrice}
+                prefix="$"
+                decimals={2}
+                flashOnTick={false}
+              />
+            ) : meta.ipoStatus === 'upcoming' ? (
+              meta.ipoRangeLabel ?? 'PRE-IPO'
+            ) : (
+              'Live Chart'
+            )}
           </span>
 
           {pct !== null && (

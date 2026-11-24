@@ -16,6 +16,7 @@ import {
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import { playAlertChime } from '../lib/priceAlerts';
+import type { ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
 import {
   HyperliquidWhaleTapeStream,
@@ -35,6 +36,9 @@ import {
 } from '../lib/marketTideHistory';
 import { GexProfilePanel } from './GexProfilePanel';
 import { MarketTideChart } from './MarketTideChart';
+import { MarketFlowCanvas } from './ui/MarketFlowCanvas';
+import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
+import { SpotlightSurface } from './ui/SpotlightCard';
 
 type UoaFilter =
   | 'ALL'
@@ -51,11 +55,22 @@ type TapeMinUsd = 0 | 5000 | 25000 | 100000;
 type TapeSideFilter = 'ALL' | 'BUY' | 'SELL';
 type ChimeThreshold = 0 | 50000 | 100000 | 250000;
 
+const UOA_FILTER_ITEMS: ReadonlyArray<SegmentedTabItem<UoaFilter>> = [
+  { id: 'ALL', label: 'All Flow' },
+  { id: 'CALL', label: 'Calls' },
+  { id: 'PUT', label: 'Puts' },
+  { id: 'LOTTO_0_7D', label: '0-7D Lotto' },
+  { id: 'LEAPS', label: 'Whale LEAPS' },
+  { id: 'VOL_OI', label: 'Vol > 1.5× OI' },
+  { id: 'MEGA', label: 'Mega $250K+' },
+];
+
 interface WhaleFlowDeskProps {
   ctxMap: Record<string, HlAssetCtx>;
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
   pinnedTickers?: string[];
+  themeId?: ThemeId;
   onSelectTicker: (ticker: string) => void;
   onSimulateContract?: (contract: OptionContractFlow) => void;
   onNotify?: (message: string) => void;
@@ -108,6 +123,7 @@ export function WhaleFlowDesk({
   quoteMap,
   directoryMap,
   pinnedTickers = [],
+  themeId = 'slate',
   onSelectTicker,
   onSimulateContract,
   onNotify,
@@ -450,7 +466,12 @@ export function WhaleFlowDesk({
     <div className="whale-flow-shell">
       {/* 1. Market Tide & 6-Sector Smart-Money Heatmap */}
       <section className="whale-card" aria-label="Market Tide and Sector Flow Heatmap">
-        <div className="whale-hero-head">
+        <div className="whale-hero-head desk-hero-banner">
+          <MarketFlowCanvas
+            themeId={themeId}
+            sentiment={Math.max(-1, Math.min(1, marketTide.score / 60))}
+            className="desk-hero-canvas"
+          />
           <div className="whale-title-block">
             <div className="daily-bread-eyebrow-row">
               <span className="whale-badge mono">
@@ -537,36 +558,41 @@ export function WhaleFlowDesk({
             const up = sec.avgPct >= 0;
             const strong = Math.abs(sec.avgPct) >= 1.5;
             return (
-              <div
+              <SpotlightSurface
                 key={sec.sector}
-                className={`whale-sector-tile whale-sector-tile--${
-                  up ? (strong ? 'strong-bull' : 'bull') : strong ? 'strong-bear' : 'bear'
-                }`}
+                tone={up ? 'emerald' : 'crimson'}
+                className="whale-sector-shell"
               >
-                <div className="whale-sector-top mono">
-                  <span className="whale-sector-name">{sec.sector}</span>
-                  <span className={up ? 'text-emerald' : 'text-crimson'}>
-                    {up ? '+' : ''}
-                    {sec.avgPct.toFixed(2)}%
-                  </span>
+                <div
+                  className={`whale-sector-tile whale-sector-tile--${
+                    up ? (strong ? 'strong-bull' : 'bull') : strong ? 'strong-bear' : 'bear'
+                  }`}
+                >
+                  <div className="whale-sector-top mono">
+                    <span className="whale-sector-name">{sec.sector}</span>
+                    <span className={up ? 'text-emerald' : 'text-crimson'}>
+                      {up ? '+' : ''}
+                      {sec.avgPct.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="whale-sector-tickers mono">
+                    {sec.leaders.map((l) => (
+                      <button
+                        key={l.ticker}
+                        type="button"
+                        className="whale-sector-chip"
+                        onClick={() => onSelectTicker(l.ticker)}
+                      >
+                        <span>{l.ticker}</span>
+                        <span className={l.pct >= 0 ? 'text-emerald' : 'text-crimson'}>
+                          {l.pct >= 0 ? '+' : ''}
+                          {l.pct.toFixed(1)}%
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="whale-sector-tickers mono">
-                  {sec.leaders.map((l) => (
-                    <button
-                      key={l.ticker}
-                      type="button"
-                      className="whale-sector-chip"
-                      onClick={() => onSelectTicker(l.ticker)}
-                    >
-                      <span>{l.ticker}</span>
-                      <span className={l.pct >= 0 ? 'text-emerald' : 'text-crimson'}>
-                        {l.pct >= 0 ? '+' : ''}
-                        {l.pct.toFixed(1)}%
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+              </SpotlightSurface>
             );
           })}
         </div>
@@ -620,30 +646,13 @@ export function WhaleFlowDesk({
 
           {/* Pro Presets + Granular DTE / Min Prem / Moneyness Bar */}
           <div className="whale-uoa-toolbar">
-            <div className="bread-filter-group" role="tablist" aria-label="Filter options flow presets">
-              {(
-                [
-                  ['ALL', 'All Flow'],
-                  ['CALL', 'Calls'],
-                  ['PUT', 'Puts'],
-                  ['LOTTO_0_7D', '0-7D Lotto'],
-                  ['LEAPS', 'Whale LEAPS'],
-                  ['VOL_OI', 'Vol > 1.5× OI'],
-                  ['MEGA', 'Mega $250K+'],
-                ] as Array<[UoaFilter, string]>
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={uoaFilter === id}
-                  className={`news-cat-tab mono${uoaFilter === id ? ' active' : ''}`}
-                  onClick={() => setUoaFilter(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <SegmentedTabs
+              items={UOA_FILTER_ITEMS}
+              value={uoaFilter}
+              onChange={setUoaFilter}
+              ariaLabel="Filter options flow presets"
+              size="sm"
+            />
 
             {/* Granular Screener Filters */}
             <div className="whale-pro-filters mono">
