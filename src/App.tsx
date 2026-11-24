@@ -313,8 +313,43 @@ export function App() {
     applyTheme(themeId);
   }, [themeId]);
 
-  // Keep browser URL & tab title cleanly synced with active view / War Room
+  const isPopStateNavRef = useRef<boolean>(false);
+
+  // Restore view & ticker when the user presses browser Back / Forward
   useEffect(() => {
+    const onPopState = () => {
+      const next = getInitialRouteFromUrl();
+      isPopStateNavRef.current = true;
+      setExplorerOpen(false);
+      setAlertsDrawerOpen(false);
+      setSimContract(null);
+      setActiveView(next.view);
+      if (next.view === 'terminal') {
+        setActiveTicker(next.ticker);
+      }
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Keep browser URL, history stack & tab title cleanly synced with active view / War Room
+  useEffect(() => {
+    const syncHistory = (url: URL, changed: boolean) => {
+      if (isPopStateNavRef.current) {
+        isPopStateNavRef.current = false;
+        return;
+      }
+      if (changed) {
+        window.history.pushState(
+          { view: activeView, ticker: meta.ticker },
+          '',
+          url.toString(),
+        );
+      }
+    };
+
     if (activeView === 'home') {
       document.title = 'aINVEST — Live Stock Market News, IPOs & AI Terminal';
       try {
@@ -328,9 +363,7 @@ export function App() {
           url.searchParams.delete('view');
           changed = true;
         }
-        if (changed) {
-          window.history.replaceState({}, '', url.toString());
-        }
+        syncHistory(url, changed);
       } catch {
         // Ignore history API restrictions
       }
@@ -350,9 +383,7 @@ export function App() {
           url.searchParams.set('view', 'whale-flow');
           changed = true;
         }
-        if (changed) {
-          window.history.replaceState({}, '', url.toString());
-        }
+        syncHistory(url, changed);
       } catch {
         // Ignore history API restrictions
       }
@@ -372,9 +403,7 @@ export function App() {
           url.searchParams.set('view', 'insiders');
           changed = true;
         }
-        if (changed) {
-          window.history.replaceState({}, '', url.toString());
-        }
+        syncHistory(url, changed);
       } catch {
         // Ignore history API restrictions
       }
@@ -394,9 +423,7 @@ export function App() {
           url.searchParams.set('view', 'daily-bread');
           changed = true;
         }
-        if (changed) {
-          window.history.replaceState({}, '', url.toString());
-        }
+        syncHistory(url, changed);
       } catch {
         // Ignore history API restrictions
       }
@@ -415,9 +442,7 @@ export function App() {
         url.searchParams.set('ticker', meta.ticker);
         changed = true;
       }
-      if (changed) {
-        window.history.replaceState({}, '', url.toString());
-      }
+      syncHistory(url, changed);
     } catch {
       // Ignore history API restrictions
     }
