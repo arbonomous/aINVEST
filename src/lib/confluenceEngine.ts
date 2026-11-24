@@ -530,6 +530,7 @@ export function rankMarketConfluence(params: {
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
   insidersBundle: InsidersBundle | null;
+  optionsMap?: Record<string, TickerOptionsSummary>;
   articles: NewsArticle[];
   limit?: number;
 }): ConfluenceReport[] {
@@ -538,6 +539,7 @@ export function rankMarketConfluence(params: {
     quoteMap,
     directoryMap,
     insidersBundle,
+    optionsMap = {},
     articles,
     limit = 12,
   } = params;
@@ -560,15 +562,19 @@ export function rankMarketConfluence(params: {
     'SKHY',
   ]);
 
+  for (const sym of Object.keys(optionsMap)) {
+    candidates.add(sym);
+  }
+
   if (insidersBundle) {
-    for (const c of insidersBundle.congress.slice(0, 25)) candidates.add(c.ticker);
-    for (const f of insidersBundle.form4.slice(0, 25)) candidates.add(f.ticker);
-    for (const s of insidersBundle.squeeze.slice(0, 20)) {
-      if (s.squeezeScore >= 58) candidates.add(s.ticker);
+    for (const c of insidersBundle.congress.slice(0, 35)) candidates.add(c.ticker);
+    for (const f of insidersBundle.form4.slice(0, 35)) candidates.add(f.ticker);
+    for (const s of insidersBundle.squeeze.slice(0, 30)) {
+      if (s.squeezeScore >= 52) candidates.add(s.ticker);
     }
   }
 
-  for (const a of articles.slice(0, 18)) {
+  for (const a of articles.slice(0, 20)) {
     for (const t of a.tickers.slice(0, 2)) candidates.add(t);
   }
 
@@ -581,6 +587,7 @@ export function rankMarketConfluence(params: {
       quote: quoteMap[sym] ?? null,
       directoryEntry: directoryMap[sym] ?? null,
       insidersBundle,
+      optionsSummary: optionsMap[sym] ?? null,
       articles,
     });
     if (report.activePillars >= 2) {

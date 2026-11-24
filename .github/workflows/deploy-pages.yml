@@ -38,6 +38,9 @@ jobs:
       - name: Sync official SEC Form 4, FINRA Short Vol, SEC FTD & Congress data
         run: node scripts/sync-insiders-data.mjs
 
+      - name: Sync CBOE Options Flow & Dealer GEX Confluence snapshot
+        run: node scripts/sync-confluence-data.mjs
+
       - name: Build production bundle
         run: npm run build
 

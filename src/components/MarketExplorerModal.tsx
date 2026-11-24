@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowRight,
   Flame,
   Globe,
+  Layers,
   Search,
   Sparkles,
   Star,
@@ -10,19 +12,50 @@ import {
   Zap,
 } from 'lucide-react';
 import { CURATED_MAP, FEATURED_IPOS, FLAGSHIP_TICKERS } from '../data/tickers';
+import {
+  rankMarketConfluence,
+  type ConfluenceReport,
+} from '../lib/confluenceEngine';
 import type { HlAssetCtx } from '../lib/hyperliquidFeed';
+import type { InsidersBundle } from '../lib/insidersEngine';
 import type { DirectoryEntry, UsExchange } from '../lib/marketCatalog';
+import type { NewsArticle } from '../lib/newsFeed';
+import type { MarketQuote } from '../lib/universalFeed';
+import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
 
-export type ExplorerTab = 'ipos' | 'all' | 'live247' | 'watchlist';
+export type ExplorerTab = 'confluence' | 'ipos' | 'all' | 'live247' | 'watchlist';
+
+type ScreenerPreset =
+  | 'all'
+  | 'bull3'
+  | 'bear3'
+  | 'whale'
+  | 'insider'
+  | 'squeeze'
+  | 'earnings';
+
+const SCREENER_PRESETS: ReadonlyArray<{ id: ScreenerPreset; label: string }> = [
+  { id: 'all', label: 'ALL SIGNALS' },
+  { id: 'bull3', label: 'BULL CONFLUENCE' },
+  { id: 'bear3', label: 'BEAR CONFLUENCE' },
+  { id: 'whale', label: 'WHALE FLOW' },
+  { id: 'insider', label: 'CONGRESS / CLUSTER' },
+  { id: 'squeeze', label: 'SHORT SQUEEZE' },
+  { id: 'earnings', label: 'EARNINGS SOON' },
+];
 
 interface MarketExplorerModalProps {
   open: boolean;
   initialTab?: ExplorerTab;
   activeTicker: string;
   ctxMap: Record<string, HlAssetCtx>;
+  quoteMap?: Record<string, MarketQuote>;
   directory: DirectoryEntry[];
   directoryMap: Record<string, DirectoryEntry>;
   directoryLoading: boolean;
+  insidersBundle?: InsidersBundle | null;
+  optionsMap?: Record<string, TickerOptionsSummary>;
+  articles?: NewsArticle[];
   pinnedTickers: string[];
   onTogglePin: (ticker: string) => void;
   onSelectTicker: (ticker: string) => void;
@@ -73,9 +106,13 @@ export function MarketExplorerModal({
   initialTab = 'ipos',
   activeTicker,
   ctxMap,
+  quoteMap = {},
   directory,
   directoryMap,
   directoryLoading,
+  insidersBundle = null,
+  optionsMap = {},
+  articles = [],
   pinnedTickers,
   onTogglePin,
   onSelectTicker,
@@ -85,6 +122,9 @@ export function MarketExplorerModal({
   const [query, setQuery] = useState('');
   const [exchangeFilter, setExchangeFilter] = useState<'ALL' | UsExchange>('ALL');
   const [sectorFilter, setSectorFilter] = useState<string>('ALL');
+  const [screenerPreset, setScreenerPreset] = useState<ScreenerPreset>('all');
+  const [only247, setOnly247] = useState<boolean>(false);
+  const [onlyIpos, setOnlyIpos] = useState<boolean>(false);
   const [visibleLimit, setVisibleLimit] = useState<number>(60);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -107,6 +147,21 @@ export function MarketExplorerModal({
   }, [open, onClose]);
 
   const pinnedSet = useMemo(() => new Set(pinnedTickers), [pinnedTickers]);
+
+  // Compute full Multi-Signal Confluence Universe for the Screener tab
+  const allConfluenceReports = useMemo<ConfluenceReport[]>(
+    () =>
+      rankMarketConfluence({
+        ctxMap,
+        quoteMap,
+        directoryMap,
+        insidersBundle,
+        optionsMap,
+        articles,
+        limit: 120,
+      }),
+    [ctxMap, quoteMap, directoryMap, insidersBundle, optionsMap, articles],
+  );
 
   // Build unified index combining Curated Flagship/IPOs + Live 24/7 HL + All 7,290+ US Equities
   const allRows = useMemo<UnifiedRow[]>(() => {
@@ -148,7 +203,7 @@ export function MarketExplorerModal({
       });
     }
 
-    // 2. Ensure all Curated Flagship & Featured IPOs are present (even before directory finishes or for brand-new/upcoming IPOs)
+    // 2. Ensure all Curated Flagship & Featured IPOs are present
     for (const m of [...FLAGSHIP_TICKERS, ...FEATURED_IPOS]) {
       const existing = byTicker.get(m.ticker);
       const hl = ctxMap[m.ticker];
@@ -183,7 +238,7 @@ export function MarketExplorerModal({
       });
     }
 
-    // 3. Ensure all live Hyperliquid HIP-3 markets (indices, global stocks, pre-IPO perps) are present
+    // 3. Ensure all live Hyperliquid HIP-3 markets are present
     for (const [ticker, ctx] of Object.entries(ctxMap)) {
       if (byTicker.has(ticker)) continue;
       const pct =
@@ -220,14 +275,64 @@ export function MarketExplorerModal({
       if (r.isLive247) liveCount += 1;
     }
     return {
+      confluence: allConfluenceReports.length,
       all: allRows.length,
       ipos: ipoCount,
       live247: liveCount,
       watchlist: pinnedTickers.length,
     };
-  }, [allRows, pinnedTickers.length]);
+  }, [allRows, allConfluenceReports.length, pinnedTickers.length]);
 
   const cleanQuery = query.trim().toUpperCase().replace(/^\$/, '');
+
+  const filteredConfluence = useMemo(() => {
+    return allConfluenceReports.filter((rep) => {
+      if (only247 && !rep.isLive247) return false;
+      if (onlyIpos && !rep.isIpo) return false;
+
+      if (screenerPreset === 'bull3') {
+        if (rep.bias !== 'bull' || rep.alignedCount < 2) return false;
+      } else if (screenerPreset === 'bear3') {
+        if (rep.bias !== 'bear' || rep.alignedCount < 2) return false;
+      } else if (screenerPreset === 'whale') {
+        const w = rep.pillars.find((p) => p.id === 'whale');
+        if (!w || !w.active) return false;
+      } else if (screenerPreset === 'insider') {
+        const ins = rep.pillars.find((p) => p.id === 'insider');
+        if (
+          !ins ||
+          !ins.active ||
+          (!ins.headline.includes('CONGRESS') &&
+            !ins.headline.includes('CLUSTER') &&
+            !ins.evidence.includes('Form 4'))
+        ) {
+          return false;
+        }
+      } else if (screenerPreset === 'squeeze') {
+        const ins = rep.pillars.find((p) => p.id === 'insider');
+        const p24 = rep.pillars.find((p) => p.id === 'perp247');
+        const hasSqz =
+          (ins?.active &&
+            (ins.headline.includes('SQUEEZE') || ins.evidence.includes('SQZ'))) ||
+          (p24?.active && p24.headline.includes('SQUEEZE'));
+        if (!hasSqz) return false;
+      } else if (screenerPreset === 'earnings') {
+        if (!rep.catalystStatus.earnings || rep.catalystStatus.earnings.daysUntil > 45) {
+          return false;
+        }
+      }
+
+      if (cleanQuery) {
+        const matchesMeta =
+          rep.ticker.includes(cleanQuery) ||
+          rep.name.toUpperCase().includes(cleanQuery) ||
+          rep.topEvidence.some((e) => e.toUpperCase().includes(cleanQuery));
+        if (!matchesMeta) return false;
+      }
+
+      return true;
+    });
+  }, [allConfluenceReports, screenerPreset, only247, onlyIpos, cleanQuery]);
 
   const filteredRows = useMemo(() => {
     let list = allRows;
@@ -288,7 +393,9 @@ export function MarketExplorerModal({
 
   const canDirectLaunch =
     VALID_TICKER_RE.test(cleanQuery) &&
-    !filteredRows.some((r) => r.ticker === cleanQuery);
+    !(tab === 'confluence'
+      ? filteredConfluence.some((r) => r.ticker === cleanQuery)
+      : filteredRows.some((r) => r.ticker === cleanQuery));
 
   if (!open) return null;
 
@@ -302,7 +409,7 @@ export function MarketExplorerModal({
       className="explorer-backdrop"
       role="dialog"
       aria-modal="true"
-      aria-label="aINVEST Universal Stocks & IPOs Explorer"
+      aria-label="aINVEST Universal Stocks, IPOs & Multi-Signal Confluence Screener"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -312,11 +419,13 @@ export function MarketExplorerModal({
           <div className="explorer-title-group">
             <Globe size={15} className="text-emerald" aria-hidden="true" />
             <div>
-              <h2 className="explorer-title">ALL STOCKS &amp; IPOs EXPLORER</h2>
+              <h2 className="explorer-title">
+                ALL STOCKS, IPOs &amp; CONFLUENCE SCREENER
+              </h2>
               <p className="explorer-subtitle mono">
                 {directoryLoading && directory.length === 0
                   ? 'Syncing full NASDAQ / NYSE / AMEX directory…'
-                  : `${counts.all.toLocaleString()} US Stocks & ETFs • ${counts.ipos.toLocaleString()} Recent/Upcoming IPOs • ${counts.live247} 24/7 Live`}
+                  : `${counts.confluence} Multi-Signal Setups • ${counts.all.toLocaleString()} US Stocks & ETFs • ${counts.ipos.toLocaleString()} IPOs • ${counts.live247} 24/7 Live`}
               </p>
             </div>
           </div>
@@ -339,7 +448,7 @@ export function MarketExplorerModal({
             ref={inputRef}
             type="text"
             className="explorer-search-input mono"
-            placeholder="Search any stock, ETF, or IPO by ticker or company (e.g. SPCX, JPM, DIS, BRK.B, CRWV, CBRS…)"
+            placeholder="Search any stock, ETF, IPO, or signal (e.g. NVDA, PLTR, CONGRESS, SQUEEZE, SPCX…)"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -348,7 +457,9 @@ export function MarketExplorerModal({
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                if (filteredRows.length > 0) {
+                if (tab === 'confluence' && filteredConfluence.length > 0) {
+                  launchTicker(filteredConfluence[0].ticker);
+                } else if (filteredRows.length > 0) {
                   launchTicker(filteredRows[0].ticker);
                 } else if (VALID_TICKER_RE.test(cleanQuery)) {
                   launchTicker(cleanQuery);
@@ -370,6 +481,20 @@ export function MarketExplorerModal({
 
         {/* Category Tabs */}
         <div className="explorer-tabs-bar" role="tablist" aria-label="Market categories">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'confluence'}
+            className={`explorer-tab mono${tab === 'confluence' ? ' active' : ''}`}
+            onClick={() => {
+              setTab('confluence');
+              setVisibleLimit(60);
+            }}
+          >
+            <Layers size={12} />
+            <span>CONFLUENCE SCREENER ({counts.confluence})</span>
+          </button>
+
           <button
             type="button"
             role="tab"
@@ -427,6 +552,41 @@ export function MarketExplorerModal({
           </button>
         </div>
 
+        {/* Multi-Signal Smart-Money Presets for Confluence Screener */}
+        {tab === 'confluence' && (
+          <div className="explorer-filters-strip">
+            <div className="explorer-filter-group">
+              {SCREENER_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`explorer-chip mono${screenerPreset === p.id ? ' active' : ''}`}
+                  onClick={() => setScreenerPreset(p.id)}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="explorer-filter-group">
+              <button
+                type="button"
+                className={`explorer-chip mono${only247 ? ' active' : ''}`}
+                onClick={() => setOnly247((v) => !v)}
+              >
+                24/7 PERPS ONLY
+              </button>
+              <button
+                type="button"
+                className={`explorer-chip mono${onlyIpos ? ' active' : ''}`}
+                onClick={() => setOnlyIpos((v) => !v)}
+              >
+                IPOs ONLY
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Exchange & Sector Sub-Filters for All Stocks */}
         {tab === 'all' && (
           <div className="explorer-filters-strip">
@@ -475,7 +635,7 @@ export function MarketExplorerModal({
               <Sparkles size={14} className="text-emerald" />
               <span>
                 Open <strong className="mono">{cleanQuery}</strong> War Room directly
-                (live chart, AI brief, technical gauge, calculator &amp; floor chat)
+                (live chart, 5-pillar confluence, AI brief, technical gauge &amp; floor chat)
               </span>
             </div>
             <span className="explorer-direct-cta mono">
@@ -486,7 +646,142 @@ export function MarketExplorerModal({
 
         {/* Results Table */}
         <div className="explorer-table-wrap">
-          {filteredRows.length === 0 ? (
+          {tab === 'confluence' ? (
+            filteredConfluence.length === 0 ? (
+              <div className="explorer-empty">
+                <p>
+                  No tickers match this multi-signal filter right now — switch preset to{' '}
+                  <strong>ALL SIGNALS</strong> or clear toggles.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="explorer-cf-header mono">
+                  <span>TICKER / TOP EVIDENCE</span>
+                  <span>5-PILLAR ALIGNMENT</span>
+                  <span className="text-right">SCORE</span>
+                  <span className="text-right">PRICE</span>
+                  <span className="text-right">PIN</span>
+                </div>
+
+                <div className="explorer-rows">
+                  {filteredConfluence.map((rep) => {
+                    const isActive = rep.ticker === activeTicker;
+                    const isPinned = pinnedSet.has(rep.ticker);
+                    const isUp = rep.changePct !== null && rep.changePct >= 0;
+
+                    return (
+                      <div
+                        key={rep.ticker}
+                        className={`explorer-cf-row${isActive ? ' active' : ''}`}
+                        onClick={() => launchTicker(rep.ticker)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            launchTicker(rep.ticker);
+                          }
+                        }}
+                      >
+                        <div className="explorer-cell-main">
+                          <div className="explorer-ticker-line">
+                            <span className="explorer-row-ticker mono">{rep.ticker}</span>
+                            {rep.isIpo && (
+                              <span className="explorer-badge explorer-badge--emerald mono">
+                                IPO
+                              </span>
+                            )}
+                            {rep.isLive247 && (
+                              <span className="explorer-badge explorer-badge--live mono">
+                                24/7
+                              </span>
+                            )}
+                            {rep.catalystStatus.earnings &&
+                              rep.catalystStatus.earnings.daysUntil <= 30 && (
+                                <span className="explorer-badge explorer-badge--amber mono">
+                                  <AlertTriangle size={9} /> ERN{' '}
+                                  {rep.catalystStatus.earnings.countdownLabel}
+                                </span>
+                              )}
+                          </div>
+                          <span className="explorer-row-name mono">
+                            {rep.topEvidence.slice(0, 2).join(' • ') || rep.name}
+                          </span>
+                        </div>
+
+                        <div className="confluence-pillar-pills mono">
+                          {rep.pillars.map((p) => (
+                            <span
+                              key={p.id}
+                              className={`cf-mini-pill cf-mini-pill--${
+                                !p.active ? 'idle' : p.direction
+                              }`}
+                              title={`${p.label}: ${p.headline} — ${p.evidence}`}
+                            >
+                              {p.shortLabel}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="explorer-cf-score mono">
+                          <span className="confluence-score-num">{rep.score}</span>
+                          <span
+                            className={`confluence-align-pill confluence-align-pill--${rep.bias}`}
+                          >
+                            {rep.alignedCount}/{Math.max(rep.activePillars, 1)}{' '}
+                            {rep.bias === 'bull'
+                              ? 'BULL'
+                              : rep.bias === 'bear'
+                                ? 'BEAR'
+                                : 'MIX'}
+                          </span>
+                        </div>
+
+                        <div className="explorer-cf-price mono">
+                          <span>
+                            {rep.price !== null ? `$${rep.price.toFixed(2)}` : '—'}
+                          </span>
+                          <span
+                            className={
+                              rep.changePct === null
+                                ? 'text-muted'
+                                : isUp
+                                  ? 'text-emerald'
+                                  : 'text-crimson'
+                            }
+                          >
+                            {rep.changePct !== null
+                              ? `${isUp ? '+' : ''}${rep.changePct.toFixed(1)}%`
+                              : '—'}
+                          </span>
+                        </div>
+
+                        <div className="explorer-cell-pin">
+                          <button
+                            type="button"
+                            className={`pin-star-btn${isPinned ? ' pinned' : ''}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(rep.ticker);
+                            }}
+                            title={
+                              isPinned
+                                ? `Unpin ${rep.ticker} from War Room bar`
+                                : `Pin ${rep.ticker} to War Room bar`
+                            }
+                            aria-label={isPinned ? `Unpin ${rep.ticker}` : `Pin ${rep.ticker}`}
+                          >
+                            <Star size={13} fill={isPinned ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )
+          ) : filteredRows.length === 0 ? (
             <div className="explorer-empty">
               {tab === 'watchlist' ? (
                 <p>

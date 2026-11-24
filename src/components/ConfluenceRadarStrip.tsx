@@ -15,6 +15,7 @@ import type { InsidersBundle } from '../lib/insidersEngine';
 import type { DirectoryEntry } from '../lib/marketCatalog';
 import type { NewsArticle } from '../lib/newsFeed';
 import type { MarketQuote } from '../lib/universalFeed';
+import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
 import { AnimatedNumber } from './ui/AnimatedNumber';
 import { SegmentedTabs, type SegmentedTabItem } from './ui/SegmentedTabs';
 import { SpotlightSurface } from './ui/SpotlightCard';
@@ -33,8 +34,10 @@ interface ConfluenceRadarStripProps {
   quoteMap: Record<string, MarketQuote>;
   directoryMap: Record<string, DirectoryEntry>;
   insidersBundle: InsidersBundle | null;
+  optionsMap: Record<string, TickerOptionsSummary>;
   articles: NewsArticle[];
   onSelectTicker: (ticker: string) => void;
+  onOpenScreener?: () => void;
 }
 
 export function ConfluenceRadarStrip({
@@ -42,8 +45,10 @@ export function ConfluenceRadarStrip({
   quoteMap,
   directoryMap,
   insidersBundle,
+  optionsMap,
   articles,
   onSelectTicker,
+  onOpenScreener,
 }: ConfluenceRadarStripProps) {
   const [filter, setFilter] = useState<RadarFilter>('all');
 
@@ -56,10 +61,11 @@ export function ConfluenceRadarStrip({
         quoteMap,
         directoryMap,
         insidersBundle,
+        optionsMap,
         articles,
-        limit: 18,
+        limit: 24,
       }),
-    [ctxMap, quoteMap, directoryMap, insidersBundle, articles],
+    [ctxMap, quoteMap, directoryMap, insidersBundle, optionsMap, articles],
   );
 
   const visibleReports = useMemo(() => {
@@ -118,14 +124,27 @@ export function ConfluenceRadarStrip({
           )}
         </div>
 
-        <SegmentedTabs
-          items={RADAR_FILTER_ITEMS}
-          value={filter}
-          onChange={setFilter}
-          ariaLabel="Filter confluence radar"
-          size="sm"
-          className="confluence-seg-tabs"
-        />
+        <div className="confluence-header-controls">
+          <SegmentedTabs
+            items={RADAR_FILTER_ITEMS}
+            value={filter}
+            onChange={setFilter}
+            ariaLabel="Filter confluence radar"
+            size="sm"
+            className="confluence-seg-tabs"
+          />
+          {onOpenScreener && (
+            <button
+              type="button"
+              className="cf-screener-cta mono"
+              onClick={onOpenScreener}
+              title="Open Multi-Signal Confluence Screener across all stocks & IPOs"
+            >
+              <span>SCREENER</span>
+              <ArrowRight size={11} />
+            </button>
+          )}
+        </div>
       </div>
 
       {visibleReports.length === 0 ? (

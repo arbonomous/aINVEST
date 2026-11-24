@@ -13,7 +13,7 @@ import type { DirectoryEntry } from '../lib/marketCatalog';
 import type { NewsArticle } from '../lib/newsFeed';
 import { exportConfluenceSnapshotCard } from '../lib/snapshotCard';
 import type { MarketQuote } from '../lib/universalFeed';
-import type { ChartGexLevels } from '../lib/whaleFlowEngine';
+import type { ChartGexLevels, TickerOptionsSummary } from '../lib/whaleFlowEngine';
 import type { ChartTradePlan } from './RealtimeCandleChart';
 import { SpotlightSurface } from './ui/SpotlightCard';
 
@@ -26,6 +26,7 @@ interface WarRoomConfluenceCardProps {
   articles: NewsArticle[];
   tradePlan: ChartTradePlan | null;
   gexLevels: ChartGexLevels | null;
+  optionsSummary?: TickerOptionsSummary | null;
   onNotify?: (message: string) => void;
 }
 
@@ -38,6 +39,7 @@ function WarRoomConfluenceCardComponent({
   articles,
   tradePlan,
   gexLevels,
+  optionsSummary = null,
   onNotify,
 }: WarRoomConfluenceCardProps) {
   const report = useMemo(
@@ -52,6 +54,7 @@ function WarRoomConfluenceCardComponent({
         articles,
         tradePlan,
         gexLevels,
+        optionsSummary,
       }),
     [
       meta.ticker,
@@ -63,6 +66,7 @@ function WarRoomConfluenceCardComponent({
       articles,
       tradePlan,
       gexLevels,
+      optionsSummary,
     ],
   );
 

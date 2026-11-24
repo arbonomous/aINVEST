@@ -30,6 +30,7 @@ import {
 import type { TrackedTrade } from '../lib/paperTrades';
 import { THEME_MAP, type ThemeId } from '../lib/themes';
 import type { MarketQuote } from '../lib/universalFeed';
+import type { TickerOptionsSummary } from '../lib/whaleFlowEngine';
 import { ConfluenceRadarStrip } from './ConfluenceRadarStrip';
 import { DailyBreadDesk } from './DailyBreadDesk';
 import type { ExplorerTab } from './MarketExplorerModal';
@@ -52,6 +53,7 @@ interface LandingPageProps {
   directory: DirectoryEntry[];
   directoryMap: Record<string, DirectoryEntry>;
   insidersBundle: InsidersBundle | null;
+  optionsMap: Record<string, TickerOptionsSummary>;
   pinnedTickers: string[];
   themeId: ThemeId;
   articles: NewsArticle[];
@@ -172,6 +174,7 @@ export function LandingPage({
   directory,
   directoryMap,
   insidersBundle,
+  optionsMap,
   pinnedTickers,
   themeId,
   articles,
@@ -779,8 +782,10 @@ export function LandingPage({
         quoteMap={quoteMap}
         directoryMap={directoryMap}
         insidersBundle={insidersBundle}
+        optionsMap={optionsMap}
         articles={articles}
         onSelectTicker={onSelectTicker}
+        onOpenScreener={() => onOpenExplorer('confluence')}
       />
 
       {/* 3. Main 2-Column Editorial Newsroom + Sticky Live Market Rail */}

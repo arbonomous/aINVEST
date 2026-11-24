@@ -63,7 +63,9 @@ const OptionsPayoffModal = lazy(() =>
 import type {
   ChartGexLevels,
   OptionContractFlow,
+  TickerOptionsSummary,
 } from './lib/whaleFlowEngine';
+import { fetchConfluenceOptionsMap } from './lib/confluenceOptionsFeed';
 import type { DailyBreadCall } from './lib/dailyBreadEngine';
 import {
   fetchAllHyperliquidHip3CtxMap,
@@ -217,6 +219,9 @@ export function App() {
   const [insidersBundle, setInsidersBundle] = useState<InsidersBundle | null>(
     null,
   );
+  const [optionsMap, setOptionsMap] = useState<
+    Record<string, TickerOptionsSummary>
+  >({});
   const [priceAlerts, setPriceAlerts] = useState<PriceAlert[]>(() =>
     loadPriceAlerts(),
   );
@@ -235,6 +240,11 @@ export function App() {
     void fetchInsidersBundle(false, controller.signal).then((data) => {
       if (active && !controller.signal.aborted) {
         setInsidersBundle(data);
+      }
+    });
+    void fetchConfluenceOptionsMap(controller.signal).then((map) => {
+      if (active && !controller.signal.aborted && Object.keys(map).length > 0) {
+        setOptionsMap(map);
       }
     });
     return () => {
@@ -918,6 +928,7 @@ export function App() {
             directory={directory}
             directoryMap={directoryMap}
             insidersBundle={insidersBundle}
+            optionsMap={optionsMap}
             pinnedTickers={pinnedTickers}
             themeId={themeId}
             articles={articles}
@@ -1054,6 +1065,7 @@ export function App() {
                   hlCtx={activeHlCtx}
                   directoryEntry={activeDirEntry}
                   insidersBundle={insidersBundle}
+                  optionsSummary={optionsMap[meta.ticker] ?? null}
                   articles={articles}
                   tradePlan={activeTradePlan}
                   gexLevels={activeGexLevels}
@@ -1123,9 +1135,13 @@ export function App() {
             initialTab={explorerTab}
             activeTicker={meta.ticker}
             ctxMap={ctxMap}
+            quoteMap={quoteMap}
             directory={directory}
             directoryMap={directoryMap}
             directoryLoading={directoryLoading}
+            insidersBundle={insidersBundle}
+            optionsMap={optionsMap}
+            articles={articles}
             pinnedTickers={pinnedTickers}
             onTogglePin={handleTogglePin}
             onSelectTicker={handleSelectTicker}

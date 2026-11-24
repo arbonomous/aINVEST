@@ -3671,6 +3671,9 @@ body {
 }
 
 .explorer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 9px;
   font-weight: 700;
   padding: 1px 5px;
@@ -10988,6 +10991,107 @@ body {
   overflow: hidden;
 }
 
+.confluence-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cf-screener-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--emerald-border);
+  background-color: var(--emerald-dim);
+  color: var(--emerald);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.cf-screener-cta:hover {
+  background-color: var(--emerald);
+  border-color: var(--emerald);
+  color: #04130d;
+  transform: translateY(-1px);
+}
+
+/* Multi-Signal Confluence Screener Table (inside MarketExplorerModal) */
+.explorer-cf-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) 235px 108px 86px 40px;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 14px;
+  background-color: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.explorer-cf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) 235px 108px 86px 40px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background-color 110ms ease;
+}
+
+.explorer-cf-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.explorer-cf-row.active {
+  background-color: var(--emerald-dim);
+}
+
+.explorer-cf-row.active .explorer-row-ticker {
+  color: var(--emerald);
+}
+
+.explorer-cf-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.explorer-cf-score .confluence-score-num {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.explorer-cf-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.explorer-cf-price > :last-child {
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
 @media (max-width: 1180px) {
   .confluence-radar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11001,11 +11105,46 @@ body {
     gap: 8px;
   }
 
-  .confluence-seg-tabs {
+  .confluence-header-controls {
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .confluence-seg-tabs {
+    flex: 1;
+  }
+
+  .explorer-cf-header {
+    display: none;
+  }
+
+  .explorer-cf-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'main score pin'
+      'pillars price pin';
+    gap: 6px 10px;
+    padding: 10px 12px;
+  }
+
+  .explorer-cf-row > .explorer-cell-main {
+    grid-area: main;
+  }
+
+  .explorer-cf-row > .confluence-pillar-pills {
+    grid-area: pillars;
+    flex-wrap: wrap;
+  }
+
+  .explorer-cf-row > .explorer-cf-score {
+    grid-area: score;
+  }
+
+  .explorer-cf-row > .explorer-cf-price {
+    grid-area: price;
+  }
+
+  .explorer-cf-row > .explorer-cell-pin {
+    grid-area: pin;
   }
 }
-
-
-
-
