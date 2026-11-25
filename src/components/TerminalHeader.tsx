@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Bell,
   BellRing,
+  Bot,
   Check,
   Flame,
   Globe,
@@ -39,6 +40,7 @@ interface TerminalHeaderProps {
   onSelectView: (view: AppView) => void;
   onSelectTicker: (ticker: string) => void;
   onOpenExplorer: (tab?: ExplorerTab) => void;
+  onOpenQuantBot?: (initialQuery?: string) => void;
   onOpenAlerts: () => void;
   onShareLink: () => void;
   copied: boolean;
@@ -73,6 +75,7 @@ export function TerminalHeader({
   onSelectView,
   onSelectTicker,
   onOpenExplorer,
+  onOpenQuantBot,
   onOpenAlerts,
   onShareLink,
   copied,
@@ -92,13 +95,16 @@ export function TerminalHeader({
     return () => window.clearInterval(id);
   }, []);
 
-  // Cmd/Ctrl + K focuses ticker search
+  // Cmd/Ctrl + K focuses ticker search; Cmd/Ctrl + J opens QuantBot AI
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setOpenSearch(true);
         inputRef.current?.focus();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        onOpenQuantBot?.();
       } else if (e.key === 'Escape') {
         setOpenSearch(false);
         inputRef.current?.blur();
@@ -106,7 +112,7 @@ export function TerminalHeader({
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [onOpenQuantBot]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -435,7 +441,7 @@ export function TerminalHeader({
                 id="ainvest-ticker-search"
                 type="text"
                 className="ticker-search-input mono"
-                placeholder={`Search ${totalMarketsLabel} (ANT, SPCX, JPM, DIS…)`}
+                placeholder={`Search ${totalMarketsLabel} or ask QuantBot (e.g. "Analyze NVDA")…`}
                 value={query}
                 onFocus={() => setOpenSearch(true)}
                 onChange={(e) => {
@@ -445,14 +451,26 @@ export function TerminalHeader({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    if (searchResults.length > 0) {
+                    const isQuestion =
+                      query.trim().includes(' ') || query.trim().includes('?');
+                    if (isQuestion && onOpenQuantBot) {
+                      onOpenQuantBot(query.trim());
+                      setQuery('');
+                      setOpenSearch(false);
+                      inputRef.current?.blur();
+                    } else if (searchResults.length > 0) {
                       pickTicker(searchResults[0].ticker);
                     } else if (VALID_TICKER_RE.test(cleanQuery)) {
                       pickTicker(cleanQuery);
+                    } else if (query.trim() && onOpenQuantBot) {
+                      onOpenQuantBot(query.trim());
+                      setQuery('');
+                      setOpenSearch(false);
+                      inputRef.current?.blur();
                     }
                   }
                 }}
-                aria-label="Search all stocks and IPO tickers"
+                aria-label="Search all stocks or ask QuantBot technical analysis AI"
               />
               <span className="search-kbd mono" aria-hidden="true">
                 ⌘K
@@ -464,6 +482,30 @@ export function TerminalHeader({
                   role="listbox"
                   aria-label="Matching stocks and IPOs"
                 >
+                  {query.trim().includes(' ') && onOpenQuantBot && (
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      className="search-option search-option--direct"
+                      onClick={() => {
+                        onOpenQuantBot(query.trim());
+                        setQuery('');
+                        setOpenSearch(false);
+                        inputRef.current?.blur();
+                      }}
+                    >
+                      <div className="search-option-left">
+                        <span className="search-opt-ticker mono">QUANTBOT</span>
+                        <span className="search-opt-name">
+                          Ask Market &amp; TA AI: &ldquo;{query.trim()}&rdquo;
+                        </span>
+                      </div>
+                      <span className="search-opt-launch mono">
+                        ASK AI <ArrowRight size={11} />
+                      </span>
+                    </button>
+                  )}
                   {canDirectLaunch && (
                     <button
                       type="button"
@@ -555,6 +597,19 @@ export function TerminalHeader({
                 </div>
               )}
             </div>
+
+            {onOpenQuantBot && (
+              <button
+                id="open-quantbot-btn"
+                type="button"
+                className="markets-explorer-btn markets-explorer-btn--quantbot mono"
+                onClick={() => onOpenQuantBot()}
+                title="Ask aINVEST QuantBot — Market & Technical Analysis AI (⌘J)"
+              >
+                <Bot size={13} />
+                <span>ASK QUANTBOT</span>
+              </button>
+            )}
 
             <button
               id="open-confluence-screener-btn"

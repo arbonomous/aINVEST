@@ -16,6 +16,7 @@ import {
   toCboeOptionSymbol,
 } from '../whaleFlowEngine';
 import { buildRelayUrls, normalizeProxyBase } from '../proxyConfig';
+import { askQuantBot, extractTickersFromQuery } from '../quantBotEngine';
 
 describe('optionsPricing', () => {
   it('normCdf is a valid CDF', () => {
@@ -191,5 +192,37 @@ describe('proxyConfig', () => {
     const urls = buildRelayUrls('https://cdn.cboe.com/test.json');
     expect(urls.length).toBeGreaterThanOrEqual(3);
     expect(urls[0]).toContain('allorigins.win');
+  });
+});
+
+describe('quantBotEngine', () => {
+  const baseCtx = {
+    activeTicker: 'NVDA',
+    ctxMap: {},
+    quoteMap: {},
+    directoryMap: {},
+    insidersBundle: null,
+    optionsMap: {},
+    articles: [],
+  };
+
+  it('extracts tickers from company names and $symbols while ignoring TA stopwords', () => {
+    expect(extractTickersFromQuery('Compare NVIDIA vs $AMD RSI', {})).toEqual([
+      'NVDA',
+      'AMD',
+    ]);
+  });
+
+  it('answers TA concept questions like Gamma Flip', async () => {
+    const res = await askQuantBot('What is Gamma Flip?', baseCtx);
+    expect(res.intent).toBe('concept');
+    expect(res.title).toContain('Gamma');
+    expect(res.bullets.length).toBeGreaterThan(0);
+  });
+
+  it('compares two tickers head-to-head', async () => {
+    const res = await askQuantBot('Compare NVDA vs AMD', baseCtx);
+    expect(res.intent).toBe('compare');
+    expect(res.tickers).toEqual(['NVDA', 'AMD']);
   });
 });

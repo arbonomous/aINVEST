@@ -718,7 +718,7 @@ async function fetchJsonWithRelays(
   for (const url of urls) {
     if (signal?.aborted) return null;
     const ctrl = new AbortController();
-    const timer = window.setTimeout(() => ctrl.abort(), 6500);
+    const timer = globalThis.setTimeout(() => ctrl.abort(), 6500);
     const onAbort = () => ctrl.abort();
     signal?.addEventListener('abort', onAbort, { once: true });
     try {
@@ -731,7 +731,7 @@ async function fetchJsonWithRelays(
     } catch {
       // Try next relay
     } finally {
-      window.clearTimeout(timer);
+      globalThis.clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
     }
   }

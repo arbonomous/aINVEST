@@ -56,6 +56,11 @@ const MarketExplorerModal = lazy(() =>
     default: m.MarketExplorerModal,
   })),
 );
+const QuantBotModal = lazy(() =>
+  import('./components/QuantBotModal').then((m) => ({
+    default: m.QuantBotModal,
+  })),
+);
 const AlertsDrawer = lazy(() =>
   import('./components/AlertsDrawer').then((m) => ({ default: m.AlertsDrawer })),
 );
@@ -229,6 +234,8 @@ export function App() {
   const [screenerPreset, setScreenerPreset] = useState<ScreenerPreset>(
     initialScreener.preset,
   );
+  const [quantBotOpen, setQuantBotOpen] = useState<boolean>(false);
+  const [quantBotQuery, setQuantBotQuery] = useState<string>('');
   const [calcOverrides, setCalcOverrides] = useState<Record<string, string>>({});
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
@@ -999,6 +1006,10 @@ export function App() {
         onSelectView={handleSelectView}
         onSelectTicker={handleSelectTicker}
         onOpenExplorer={handleOpenExplorer}
+        onOpenQuantBot={(q = '') => {
+          setQuantBotQuery(q);
+          setQuantBotOpen(true);
+        }}
         onOpenAlerts={() => setAlertsDrawerOpen(true)}
         onShareLink={handleShareLink}
         copied={copied}
@@ -1265,6 +1276,26 @@ export function App() {
             onClose={() => {
               setExplorerOpen(false);
               setScreenerPreset('all');
+            }}
+          />
+        )}
+
+        {/* aINVEST QuantBot — Market & Technical Analysis AI Modal */}
+        {quantBotOpen && (
+          <QuantBotModal
+            open={quantBotOpen}
+            initialQuery={quantBotQuery}
+            activeTicker={meta.ticker}
+            ctxMap={ctxMap}
+            quoteMap={quoteMap}
+            directoryMap={directoryMap}
+            insidersBundle={insidersBundle}
+            optionsMap={optionsMap}
+            articles={articles}
+            onSelectTicker={handleSelectTicker}
+            onClose={() => {
+              setQuantBotOpen(false);
+              setQuantBotQuery('');
             }}
           />
         )}
