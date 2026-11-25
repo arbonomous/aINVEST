@@ -49,6 +49,9 @@ jobs:
           AINVEST_PROXY_URL: ${{ vars.AINVEST_PROXY_URL }}
         run: node scripts/sync-confluence-data.mjs
 
+      - name: Sync Official Nasdaq API Undervalued Laggards (api.nasdaq.com)
+        run: node scripts/sync-nasdaq-data.mjs
+
       - name: Build production bundle
         env:
           VITE_PROXY_URL: ${{ vars.AINVEST_PROXY_URL }}

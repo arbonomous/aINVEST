@@ -129,12 +129,12 @@ export function QuantBotModal({
   if (!open) return null;
 
   const quickPrompts = [
+    '20 Nasdaq undervalued laggards',
     `Analyze ${activeTicker}`,
     'Top bullish setups',
     'Compare NVDA vs AMD',
     'Short squeeze radar',
     'What is Gamma Flip?',
-    'Explain VWAP + RSI',
   ];
 
   return (

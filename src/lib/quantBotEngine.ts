@@ -12,6 +12,7 @@ import {
 import type { HlAssetCtx } from './hyperliquidFeed';
 import type { InsidersBundle } from './insidersEngine';
 import type { DirectoryEntry } from './marketCatalog';
+import { fetchNasdaqLaggardsSnapshot } from './nasdaqFeed';
 import type { NewsArticle } from './newsFeed';
 import type { MarketQuote } from './universalFeed';
 import {
@@ -210,7 +211,8 @@ const STOP_WORDS = new Set([
   'GAMMA', 'EXPOSURE', 'FLIP', 'WALL', 'WALLS', 'PAIN', 'SKEW', 'TERM',
   'STRUCTURE', 'DIVERGENCE', 'BOLLINGER', 'BANDS', 'CONFLUENCE', 'PILLAR',
   'PILLARS', 'VOLATILITY', 'PINNING', 'OPEX', 'STRADDLE', 'BACKWARDATION',
-  'CONTANGO', 'MEAN', 'DEFINE',
+  'CONTANGO', 'MEAN', 'DEFINE', 'MAKE', 'LIST', 'THAT', 'GIVE', 'WANT',
+  'NEED', 'HELP', 'HAVE', 'USE', 'USES',
 ]);
 
 const NAME_TO_TICKER: Record<string, string> = {
@@ -438,6 +440,55 @@ export async function askQuantBot(
   }
 
   const tickers = extractTickersFromQuery(query, ctx.directoryMap);
+
+  // 0. Official Nasdaq Undervalued Laggards ("20 Nasdaq laggards", "undervalued Nasdaq")
+  if (/\b(nasdaq|laggard|laggards|undervalued)\b/i.test(lower)) {
+    const snap = await fetchNasdaqLaggardsSnapshot();
+    if (snap && snap.laggards.length > 0) {
+      const top20 = snap.laggards.slice(0, 20);
+      return {
+        id,
+        intent: 'scan',
+        title: `Top ${top20.length} Undervalued Nasdaq Laggards (Official Nasdaq API)`,
+        badge: `${snap.totalNasdaqScreened.toLocaleString()} NASDAQ SCREENED`,
+        badgeTone: 'amber',
+        summary: `Ranked directly from official Nasdaq Exchange data (api.nasdaq.com — no third-party middleman) by 52-Week drawdown, session laggard momentum, and implied upside to Nasdaq 1-Year Analyst Target.`,
+        bullets: top20.map((item, idx) => {
+          const dd =
+            item.drawdown52wPct !== null ? ` • ${item.drawdown52wPct}% off 52W High` : '';
+          const tgt =
+            item.oneYrTarget !== null && item.upsideToTargetPct !== null
+              ? ` • Nasdaq 1Y Target $${item.oneYrTarget.toFixed(2)} (+${item.upsideToTargetPct}%)`
+              : '';
+          const pe = item.peRatio !== null ? ` • P/E ${item.peRatio}` : '';
+          return `#${idx + 1} ${item.symbol} (${item.name}) — $${item.lastSale.toFixed(2)} (${item.pctChange >= 0 ? '+' : ''}${item.pctChange.toFixed(2)}%)${dd}${tgt}${pe} • Cap ${fmtUsd(item.marketCap)}`;
+        }),
+        metrics: [
+          {
+            label: 'SOURCE',
+            value: 'api.nasdaq.com (Direct)',
+            tone: 'emerald',
+          },
+          {
+            label: 'UNIVERSE',
+            value: `${snap.totalNasdaqScreened.toLocaleString()} Nasdaq ($1B+)`,
+            tone: 'neutral',
+          },
+          {
+            label: '#1 VALUE LAGGARD',
+            value: `${top20[0].symbol} (+${top20[0].upsideToTargetPct ?? 0}% to Target)`,
+            tone: 'amber',
+          },
+        ],
+        tickers: top20.slice(0, 8).map((x) => x.symbol),
+        followUps: [
+          `Analyze ${top20[0].symbol}`,
+          `Analyze ${top20[1]?.symbol ?? 'NVDA'}`,
+          'Top bullish setups',
+        ],
+      };
+    }
+  }
 
   // 1. Comparison intent ("NVDA vs AMD", "compare X and Y")
   if (
