@@ -123,6 +123,7 @@ export function QuantBotModal({
   }, [open, initialQuery]);
 
   useEffect(() => {
+    if (turns.length <= 1) return;
     threadEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [turns.length]);
 
@@ -139,7 +140,7 @@ export function QuantBotModal({
 
   return (
     <div
-      className="explorer-backdrop"
+      className="explorer-backdrop quantbot-backdrop"
       role="dialog"
       aria-modal="true"
       aria-label="aINVEST QuantBot Market and Technical Analysis AI"
@@ -148,28 +149,28 @@ export function QuantBotModal({
       }}
     >
       <div className="explorer-modal quantbot-modal">
-        <div className="explorer-header">
+        <div className="explorer-header quantbot-header">
           <div className="explorer-title-group">
             <Bot size={16} className="text-emerald" />
             <div>
-              <h2 className="explorer-title mono">aINVEST QUANTBOT // MARKET &amp; TA AI</h2>
+              <h2 className="explorer-title mono">aINVEST QUANTBOT</h2>
               <p className="explorer-sub mono">
-                Trained on live 5-Pillar Confluence • Dealer GEX • Insiders • Technicals
+                Confluence • Dealer GEX • Nasdaq API • Technicals
               </p>
             </div>
           </div>
           <button
             type="button"
-            className="explorer-close-btn mono"
+            className="explorer-close-btn quantbot-close-btn mono"
             onClick={onClose}
             aria-label="Close QuantBot"
           >
             <X size={14} />
-            <span>ESC</span>
+            <span className="quantbot-esc-label">ESC</span>
           </button>
         </div>
 
-        <div className="quantbot-prompts-bar">
+        <div className="quantbot-prompts-bar" aria-label="Quick prompts">
           {quickPrompts.map((prompt) => (
             <button
               key={prompt}
@@ -185,14 +186,16 @@ export function QuantBotModal({
         </div>
 
         <div className="quantbot-thread">
-          {turns.map((turn) => {
+          {turns.map((turn, turnIdx) => {
             const r = turn.response;
             return (
               <div key={turn.id} className="quantbot-turn">
-                <div className="quantbot-user-q mono">
-                  <span className="quantbot-q-prefix">YOU</span>
-                  <span>{turn.question}</span>
-                </div>
+                {(turnIdx > 0 || turn.question !== 'What can you analyze?') && (
+                  <div className="quantbot-user-q mono">
+                    <span className="quantbot-q-prefix">YOU</span>
+                    <span>{turn.question}</span>
+                  </div>
+                )}
 
                 <div className="quantbot-answer-card">
                   <div className="quantbot-answer-head">
@@ -234,6 +237,60 @@ export function QuantBotModal({
                     </div>
                   )}
 
+                  {r.rows && r.rows.length > 0 && (
+                    <div className="quantbot-rows-list">
+                      {r.rows.map((row) => (
+                        <button
+                          key={`${row.ticker}-${row.rank ?? ''}`}
+                          type="button"
+                          className="quantbot-row-btn"
+                          onClick={() => {
+                            onSelectTicker(row.ticker);
+                            onClose();
+                          }}
+                        >
+                          <div className="quantbot-row-top mono">
+                            <div className="quantbot-row-id">
+                              {row.rank !== undefined && (
+                                <span className="quantbot-row-rank">#{row.rank}</span>
+                              )}
+                              <span className="quantbot-row-ticker">{row.ticker}</span>
+                              <span className="quantbot-row-name">{row.name}</span>
+                            </div>
+                            <div className="quantbot-row-right">
+                              {row.price && (
+                                <span className="quantbot-row-price">{row.price}</span>
+                              )}
+                              {row.changePct && (
+                                <span
+                                  className={
+                                    row.changeTone === 'emerald'
+                                      ? 'text-emerald'
+                                      : row.changeTone === 'crimson'
+                                        ? 'text-crimson'
+                                        : 'text-muted'
+                                  }
+                                >
+                                  {row.changePct}
+                                </span>
+                              )}
+                              {row.badge && (
+                                <span
+                                  className={`quantbot-row-badge quantbot-row-badge--${
+                                    row.badgeTone ?? 'amber'
+                                  }`}
+                                >
+                                  {row.badge}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="quantbot-row-detail mono">{row.detail}</div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {r.bullets.length > 0 && (
                     <ul className="quantbot-bullets">
                       {r.bullets.map((b, idx) => (
@@ -242,42 +299,44 @@ export function QuantBotModal({
                     </ul>
                   )}
 
-                  <div className="quantbot-footer-actions">
-                    {r.tickers.length > 0 && (
-                      <div className="quantbot-ticker-links">
-                        {r.tickers.map((sym) => (
-                          <button
-                            key={sym}
-                            type="button"
-                            className="quantbot-warroom-btn mono"
-                            onClick={() => {
-                              onSelectTicker(sym);
-                              onClose();
-                            }}
-                          >
-                            <span>OPEN {sym} WAR ROOM</span>
-                            <ArrowRight size={11} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                  {(r.tickers.length > 0 || r.followUps.length > 0) && (
+                    <div className="quantbot-footer-actions">
+                      {r.tickers.length > 0 && (
+                        <div className="quantbot-ticker-links">
+                          {r.tickers.map((sym) => (
+                            <button
+                              key={sym}
+                              type="button"
+                              className="quantbot-warroom-btn mono"
+                              onClick={() => {
+                                onSelectTicker(sym);
+                                onClose();
+                              }}
+                            >
+                              <span>OPEN {sym} WAR ROOM</span>
+                              <ArrowRight size={11} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                    {r.followUps.length > 0 && (
-                      <div className="quantbot-followups">
-                        {r.followUps.map((f) => (
-                          <button
-                            key={f}
-                            type="button"
-                            className="quantbot-followup-chip mono"
-                            onClick={() => void runQuery(f)}
-                            disabled={loading}
-                          >
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                      {r.followUps.length > 0 && (
+                        <div className="quantbot-followups">
+                          {r.followUps.map((f) => (
+                            <button
+                              key={f}
+                              type="button"
+                              className="quantbot-followup-chip mono"
+                              onClick={() => void runQuery(f)}
+                              disabled={loading}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

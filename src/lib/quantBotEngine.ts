@@ -26,6 +26,18 @@ export interface QuantBotMetric {
   tone?: 'emerald' | 'crimson' | 'amber' | 'neutral';
 }
 
+export interface QuantBotRow {
+  rank?: number;
+  ticker: string;
+  name: string;
+  price?: string;
+  changePct?: string;
+  changeTone?: 'emerald' | 'crimson' | 'neutral';
+  detail: string;
+  badge?: string;
+  badgeTone?: 'emerald' | 'crimson' | 'amber';
+}
+
 export interface QuantBotResponse {
   id: string;
   intent: 'ticker' | 'compare' | 'scan' | 'concept' | 'help';
@@ -34,6 +46,7 @@ export interface QuantBotResponse {
   badgeTone: 'emerald' | 'crimson' | 'amber' | 'neutral';
   summary: string;
   bullets: string[];
+  rows?: QuantBotRow[];
   metrics: QuantBotMetric[];
   tickers: string[];
   followUps: string[];
@@ -452,16 +465,27 @@ export async function askQuantBot(
         title: `Top ${top20.length} Undervalued Nasdaq Laggards (Official Nasdaq API)`,
         badge: `${snap.totalNasdaqScreened.toLocaleString()} NASDAQ SCREENED`,
         badgeTone: 'amber',
-        summary: `Ranked directly from official Nasdaq Exchange data (api.nasdaq.com — no third-party middleman) by 52-Week drawdown, session laggard momentum, and implied upside to Nasdaq 1-Year Analyst Target.`,
-        bullets: top20.map((item, idx) => {
+        summary: `Ranked directly from official Nasdaq Exchange data (api.nasdaq.com — no third-party middleman) by 52W drawdown, laggard momentum, and upside to Nasdaq 1Y Target.`,
+        bullets: [],
+        rows: top20.map((item, idx) => {
           const dd =
-            item.drawdown52wPct !== null ? ` • ${item.drawdown52wPct}% off 52W High` : '';
+            item.drawdown52wPct !== null ? `${item.drawdown52wPct}% off 52W High` : '';
           const tgt =
             item.oneYrTarget !== null && item.upsideToTargetPct !== null
-              ? ` • Nasdaq 1Y Target $${item.oneYrTarget.toFixed(2)} (+${item.upsideToTargetPct}%)`
+              ? `1Y Target $${item.oneYrTarget.toFixed(2)} (+${item.upsideToTargetPct}%)`
               : '';
-          const pe = item.peRatio !== null ? ` • P/E ${item.peRatio}` : '';
-          return `#${idx + 1} ${item.symbol} (${item.name}) — $${item.lastSale.toFixed(2)} (${item.pctChange >= 0 ? '+' : ''}${item.pctChange.toFixed(2)}%)${dd}${tgt}${pe} • Cap ${fmtUsd(item.marketCap)}`;
+          const pe = item.peRatio !== null ? `P/E ${item.peRatio}` : '';
+          return {
+            rank: idx + 1,
+            ticker: item.symbol,
+            name: item.name,
+            price: `$${item.lastSale.toFixed(2)}`,
+            changePct: `${item.pctChange >= 0 ? '+' : ''}${item.pctChange.toFixed(2)}%`,
+            changeTone: item.pctChange >= 0 ? 'emerald' : 'crimson',
+            detail: [dd, tgt, pe, `Cap ${fmtUsd(item.marketCap)}`].filter(Boolean).join(' • '),
+            badge: item.upsideToTargetPct !== null ? `+${item.upsideToTargetPct}% TGT` : undefined,
+            badgeTone: 'amber',
+          };
         }),
         metrics: [
           {
@@ -480,7 +504,7 @@ export async function askQuantBot(
             tone: 'amber',
           },
         ],
-        tickers: top20.slice(0, 8).map((x) => x.symbol),
+        tickers: [],
         followUps: [
           `Analyze ${top20[0].symbol}`,
           `Analyze ${top20[1]?.symbol ?? 'NVDA'}`,
@@ -619,18 +643,26 @@ export async function askQuantBot(
       badgeTone: tone,
       summary:
         filtered.length > 0
-          ? `Found ${filtered.length} tickers matching "${scanLabel}" ranked by 5-Pillar Confluence score.`
-          : `No strict matches right now — showing top ${top.length} overall converging tickers.`,
-      bullets: top.map(
-        (r) =>
-          `${r.ticker} (${r.score}/100 ${r.bias.toUpperCase()} • ${r.alignedCount}/${Math.max(1, r.activePillars)}): ${r.topEvidence.slice(0, 2).join(' • ') || r.name}`,
-      ),
-      metrics: top.slice(0, 3).map((r) => ({
-        label: r.ticker,
-        value: `${r.score}/100`,
-        tone: r.bias === 'bull' ? 'emerald' : r.bias === 'bear' ? 'crimson' : 'amber',
+          ? `Found ${filtered.length} tickers matching "${scanLabel}" ranked by 5-Pillar Confluence.`
+          : `No strict matches right now — showing top ${top.length} converging tickers.`,
+      bullets: [],
+      rows: top.map((r, idx) => ({
+        rank: idx + 1,
+        ticker: r.ticker,
+        name: r.name,
+        price: r.price !== null ? `$${r.price.toFixed(2)}` : undefined,
+        changePct:
+          r.changePct !== null
+            ? `${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%`
+            : undefined,
+        changeTone:
+          r.changePct === null ? 'neutral' : r.changePct >= 0 ? 'emerald' : 'crimson',
+        detail: `${r.alignedCount}/${Math.max(1, r.activePillars)} pillars • ${r.topEvidence.slice(0, 2).join(' • ') || r.verdict}`,
+        badge: `${r.score}/100 ${r.bias.toUpperCase()}`,
+        badgeTone: r.bias === 'bull' ? 'emerald' : r.bias === 'bear' ? 'crimson' : 'amber',
       })),
-      tickers: top.map((r) => r.ticker),
+      metrics: [],
+      tickers: [],
       followUps: top.slice(0, 2).map((r) => `Analyze ${r.ticker}`).concat(['Short squeeze radar']),
     };
   }
